@@ -102,9 +102,53 @@ function calcularRotaOtimizada() {
 
     directionsService.route(request, function(result, status) {
         if (status === google.maps.DirectionsStatus.OK) {
+            // Desenha a linha azul no mapa
             directionsRenderer.setDirections(result);
+            
+            // NOVO: Chama a função que desenha a lista com os botões
+            gerarBotoesDeNavegacao(result);
         } else {
             alert("Não foi possível calcular a rota. Erro: " + status);
         }
     });
+    // Função para desenhar os botões de GPS
+function gerarBotoesDeNavegacao(result) {
+    const divLista = document.getElementById("lista-paradas");
+    // Limpa a lista anterior e coloca um título
+    divLista.innerHTML = "<h3 style='margin-top: 25px;'>📱 Rota Pronta para Navegar:</h3>"; 
+
+    // O Google divide a rota em partes chamadas "legs" (pernas). 
+    // A perna 0 é da Origem até a 1ª Parada. A perna 1 é da 1ª Parada até a 2ª...
+    const legs = result.routes[0].legs; 
+
+    for (let i = 0; i < legs.length; i++) {
+        const enderecoParada = legs[i].end_address; // O endereço onde essa parte termina
+        const numero = i + 1;
+        
+        // Se for a última etapa da viagem, escrevemos "Destino Final"
+        const titulo = (numero === legs.length) ? "🏁 Destino Final" : `🛑 Parada ${numero}`;
+
+        // Cria a caixinha branca para o item
+        const divItem = document.createElement("div");
+        divItem.className = "parada-item";
+
+        // Adiciona o texto do endereço
+        const texto = document.createElement("p");
+        texto.innerHTML = `<strong>${titulo}:</strong> ${enderecoParada}`;
+
+        // Cria o botão que aciona o app de GPS do usuário
+        const btnNavegar = document.createElement("a");
+        btnNavegar.className = "btn-navegar";
+        btnNavegar.innerText = "Navegar 🚗";
+        
+        // O comando 'geo:' diz ao sistema do celular para abrir o app de mapas padrão
+        const enderecoFormatado = encodeURIComponent(enderecoParada);
+        btnNavegar.href = `geo:0,0?q=${enderecoFormatado}`;
+
+        // Junta tudo e joga na tela
+        divItem.appendChild(texto);
+        divItem.appendChild(btnNavegar);
+        divLista.appendChild(divItem);
+    }
+}
 }
