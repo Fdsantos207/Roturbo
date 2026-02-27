@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App de Roteirização</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="painel-app">
+        <h2>📍 Roturbo</h2>
+        
+        <label>Ponto de Partida:</label>
+        <input type="text" id="origem" placeholder="Digite a origem...">
+
+        <label>Paradas:</label>
+        <div id="container-paradas"></div>
+        
+        <button id="btn-add-parada" type="button">+ Adicionar Parada</button>
+
+        <label>Destino Final:</label>
+
+        <label>Destino Final:</label>
+        <input type="text" id="destino" placeholder="Digite o destino...">
+
+        <button id="btn-calcular">Otimizar Minha Rota</button>
+
+        <div id="mapa">O mapa aparecerá aqui...</div>
+        <div id="lista-paradas"></div>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQiTazerx3rHFGaxTYEkbWzEuxS6TiK2w&libraries=places&callback=iniciarMapa" async defer></script>
+    <script src="script.js"></script>
+</body>
+</html>

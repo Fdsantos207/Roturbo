@@ -1,0 +1,82 @@
+/* Estilos básicos para deixar com cara de App */
+body { 
+    font-family: Arial, sans-serif; 
+    background-color: #f4f4f9; 
+    padding: 20px; 
+    margin: 0;
+}
+
+.painel-app { 
+    max-width: 500px; 
+    margin: 0 auto; 
+    background: white; 
+    padding: 20px; 
+    border-radius: 10px; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+}
+
+input, button { 
+    width: 100%; 
+    padding: 12px; 
+    margin-bottom: 10px; 
+    border: 1px solid #ccc; 
+    border-radius: 5px; 
+    box-sizing: border-box; 
+}
+
+button { 
+    background-color: #28a745; 
+    color: white; 
+    font-weight: bold; 
+    border: none; 
+    cursor: pointer; 
+}
+
+button:hover {
+    background-color: #218838;
+}
+
+#mapa { 
+    width: 100%; 
+    height: 350px; 
+    background-color: #e9ecef; 
+    border-radius: 5px; 
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+}
+
+#lista-paradas {
+    margin-top: 15px;
+}
+/* Botão azul para diferenciar do botão principal verde */
+#btn-add-parada {
+    background-color: #007bff;
+    margin-bottom: 20px;
+}
+#btn-add-parada:hover {
+    background-color: #0056b3;
+}
+
+/* Alinha o campo de texto e o botão X lado a lado */
+.parada-grupo {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.parada-grupo input {
+    margin-bottom: 0; /* Tira a margem padrão para alinhar com o botão */
+}
+
+/* O botão X vermelho */
+.btn-remover {
+    background-color: #dc3545;
+    width: 45px;
+    padding: 0;
+}
+.btn-remover:hover {
+    background-color: #c82333;
+}
