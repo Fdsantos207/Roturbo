@@ -239,6 +239,21 @@ function calcularRotaOtimizada() {
             alert("Não foi possível calcular a rota. Erro: " + status);
         }
     });
+
+    // Dentro do sucesso da rota (DirectionsStatus.OK)
+const distanciaTotal = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
+const distanciaKm = (distanciaTotal / 1000).toFixed(2);
+
+// Salva a rota no histórico do Firebase
+if (usuarioLogado) {
+    await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), {
+        distancia: distanciaKm,
+        data: new Date(),
+        origem: origem,
+        destino: destino
+    });
+    console.log("KM salvo no banco de dados!");
+}
 }
 
 function gerarBotoesDeNavegacao(result) {
