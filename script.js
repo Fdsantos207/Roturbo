@@ -75,58 +75,79 @@ document.addEventListener("DOMContentLoaded", function() {
         inputFoto.capture = "environment";
         inputFoto.style.display = "none";
 
-       // Lógica da Câmera com o FILTRO PURO DE ENDEREÇO
+        // --- LÓGICA TURBINADA DE LEITURA DE FOTO ---
         inputFoto.addEventListener("change", function(evento) {
             const arquivo = evento.target.files[0];
             if (arquivo) {
-                input.value = "Iniciando motor da câmera... ⏳";
-                
-                Tesseract.recognize(
-                    arquivo,
-                    'por',
-                    { 
-                        logger: info => {
-                            if (info.status === 'recognizing text') {
-                                const progresso = Math.round(info.progress * 100);
-                                input.value = `Lendo imagem: ${progresso}% ⏳`;
-                            } else {
-                                input.value = "Preparando IA... ⏳";
+                input.value = "Tratando imagem... ⏳";
+
+                // Pega o arquivo e transforma em imagem na memória
+                const leitor = new FileReader();
+                leitor.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // Cria uma "tela" invisível para tratar a foto
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        // O SEGREDO: Aumenta a imagem em 2x para a IA conseguir ler notas pequenas!
+                        const escala = 2; 
+                        canvas.width = img.width * escala;
+                        canvas.height = img.height * escala;
+
+                        // Desenha a imagem gigante
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                        // Transforma o canvas de volta em imagem de alta qualidade
+                        const imagemMelhorada = canvas.toDataURL('image/jpeg');
+
+                        input.value = "Iniciando IA... ⏳";
+
+                        // Manda a imagem gigante pro Tesseract!
+                        Tesseract.recognize(
+                            imagemMelhorada,
+                            'por',
+                            { 
+                                logger: info => {
+                                    if (info.status === 'recognizing text') {
+                                        const progresso = Math.round(info.progress * 100);
+                                        input.value = `Lendo imagem: ${progresso}% ⏳`;
+                                    }
+                                }
                             }
-                        }
-                    }
-                ).then(({ data: { text } }) => {
-                    // --- FILTRO ROBUSTO ---
-                    const linhas = text.split('\n');
-                    let enderecoEncontrado = "";
+                        ).then(({ data: { text } }) => {
+                            const linhas = text.split('\n');
+                            let enderecoEncontrado = "";
 
-                    // Procura uma linha que tenha Rua/Av/etc E pelo menos um número nela
-                    const regraEndereco = /(rua|avenida|av\.|av|travessa|alameda|praça|rodovia|estrada)\s+.*?\d+/i;
+                            const regraEndereco = /(rua|avenida|av\.|av|travessa|alameda|praça|rodovia|estrada)\s+.*?\d+/i;
 
-                    for (let i = 0; i < linhas.length; i++) {
-                        let linha = linhas[i].trim();
-                        if (regraEndereco.test(linha)) {
-                            enderecoEncontrado = linha;
-                            break; // Achou a primeira linha boa, para de procurar!
-                        }
-                    }
+                            for (let i = 0; i < linhas.length; i++) {
+                                let linha = linhas[i].trim();
+                                if (regraEndereco.test(linha)) {
+                                    enderecoEncontrado = linha;
+                                    break;
+                                }
+                            }
 
-                    if (enderecoEncontrado !== "") {
-                        // Limpa "sujeiras" que o OCR costuma ler errado tipo | ou _
-                        enderecoEncontrado = enderecoEncontrado.replace(/[|_[\]{}<>]/g, '').trim();
-                        input.value = enderecoEncontrado;
-                    } else {
-                        // Se não achar nada, coloca pelo menos um pedaço do texto pra você ver o que ele leu
-                        input.value = text.replace(/\n/g, ' ').substring(0, 50);
-                    }
+                            if (enderecoEncontrado !== "") {
+                                enderecoEncontrado = enderecoEncontrado.replace(/[|_[\]{}<>]/g, '').trim();
+                                input.value = enderecoEncontrado;
+                            } else {
+                                // Se ainda assim falhar, mostra o que ele achou pra gente diagnosticar
+                                input.value = "Não encontrou Rua/Av na leitura.";
+                                console.log("TEXTO PURO DA IA:", text); 
+                            }
 
-                    // Foca no campo para você poder dar um "espaço" e o Google sugerir
-                    input.focus();
-                    // --- FIM DO FILTRO ---
+                            input.focus();
 
-                }).catch(erro => {
-                    input.value = "";
-                    alert("Erro ao tentar ler a imagem. Tente tirar a foto mais de perto.");
-                });
+                        }).catch(erro => {
+                            input.value = "";
+                            alert("Erro ao ler imagem.");
+                        });
+                    };
+                    img.src = e.target.result;
+                };
+                leitor.readAsDataURL(arquivo);
             }
         });
 
