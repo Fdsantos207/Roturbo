@@ -20,11 +20,11 @@ function iniciarMapa() {
     configurarAutocomplete(document.getElementById("destino"));
 }
 
-// Essa função conecta o campo de texto ao banco de dados de lugares do Google
+// Essa função conecta o campo de texto ao banco de dados do Google
 function configurarAutocomplete(inputElement) {
     new google.maps.places.Autocomplete(inputElement, {
-        types: ['geocode', 'establishment'], // Procura ruas e comércios
-        componentRestrictions: { country: "br" } // Foca no Brasil para ser mais rápido e preciso
+        types: ['geocode', 'establishment'],
+        componentRestrictions: { country: "br" }
     });
 }
 
@@ -38,32 +38,91 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // AÇÃO DE ADICIONAR NOVA PARADA (+)
     btnAddParada.addEventListener("click", function() {
-        // Cria a caixinha que vai segurar o input e o botão X
+        // Cria a caixinha principal
         const div = document.createElement("div");
         div.className = "parada-grupo";
 
-        // Cria o campo de texto
+        // 1. BOTÃO SUBIR ↑
+        const btnSubir = document.createElement("button");
+        btnSubir.type = "button";
+        btnSubir.className = "btn-mover";
+        btnSubir.innerHTML = "↑";
+        btnSubir.onclick = function() {
+            if (div.previousElementSibling) {
+                containerParadas.insertBefore(div, div.previousElementSibling);
+            }
+        };
+
+        // 2. BOTÃO DESCER ↓
+        const btnDescer = document.createElement("button");
+        btnDescer.type = "button";
+        btnDescer.className = "btn-mover";
+        btnDescer.innerHTML = "↓";
+        btnDescer.onclick = function() {
+            if (div.nextElementSibling) {
+                containerParadas.insertBefore(div.nextElementSibling, div);
+            }
+        };
+
+        // 3. CAMPO DE TEXTO
         const input = document.createElement("input");
         input.type = "text";
         input.className = "input-parada";
-        input.placeholder = "Digite o endereço da parada...";
+        input.placeholder = "Digite o endereço...";
 
-        // Cria o botão de excluir (X)
+        // 4. BOTÃO DA CÂMERA 📸 (NOVO)
+        const idUnico = "foto-" + Date.now(); 
+        const labelCamera = document.createElement("label");
+        labelCamera.className = "btn-camera";
+        labelCamera.htmlFor = idUnico;
+        labelCamera.innerText = "📸";
+
+        const inputFoto = document.createElement("input");
+        inputFoto.type = "file";
+        inputFoto.id = idUnico;
+        inputFoto.accept = "image/*";
+        inputFoto.capture = "environment";
+        inputFoto.style.display = "none";
+
+        // Lógica para ler a foto com a IA (Tesseract)
+        inputFoto.addEventListener("change", function(evento) {
+            const arquivo = evento.target.files[0];
+            if (arquivo) {
+                input.value = "Lendo imagem... Aguarde ⏳";
+                Tesseract.recognize(
+                    arquivo,
+                    'por',
+                    { logger: info => console.log(info) }
+                ).then(({ data: { text } }) => {
+                    const textoLimpo = text.replace(/\n/g, ', ').trim();
+                    input.value = textoLimpo;
+                }).catch(erro => {
+                    input.value = "";
+                    alert("Erro ao tentar ler a imagem.");
+                });
+            }
+        });
+
+        // 5. BOTÃO EXCLUIR X
         const btnRemover = document.createElement("button");
         btnRemover.type = "button";
         btnRemover.className = "btn-remover";
         btnRemover.innerText = "X";
-        // Se clicar no X, ele deleta a caixinha inteira da tela
         btnRemover.onclick = function() {
             containerParadas.removeChild(div);
         };
 
-        // Coloca o input e o botão X dentro da caixinha, e joga na tela
+        // Coloca todos os botões e o campo de texto dentro da linha na ordem certa!
+        div.appendChild(btnSubir);
+        div.appendChild(btnDescer);
         div.appendChild(input);
+        div.appendChild(labelCamera);
+        div.appendChild(inputFoto);
         div.appendChild(btnRemover);
+        
         containerParadas.appendChild(div);
-
-        // O SEGREDO: Ativa o Autocomplete neste novo campo que acabou de nascer!
+        
+        // Ativa o Autocomplete no campo que acabou de nascer
         configurarAutocomplete(input);
     });
 });
@@ -71,9 +130,11 @@ document.addEventListener("DOMContentLoaded", function() {
 function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
-    
-    // Pega todos os campos de parada que o usuário criou dinamicamente
     const inputsParadas = document.querySelectorAll(".input-parada");
+
+    // Verifica se o usuário quer otimizar (se o checkbox não existir no HTML, otimiza por padrão)
+    const checkboxOtimizar = document.getElementById("otimizar-rota");
+    const querOtimizar = checkboxOtimizar ? checkboxOtimizar.checked : true;
 
     if (origem === "" || destino === "") {
         alert("Por favor, preencha a origem e o destino final!");
@@ -82,7 +143,6 @@ function calcularRotaOtimizada() {
 
     let waypoints = [];
     
-    // Passa por cada campo de parada e adiciona na lista (se não estiver vazio)
     inputsParadas.forEach(function(input) {
         if (input.value.trim() !== "") {
             waypoints.push({
@@ -96,93 +156,50 @@ function calcularRotaOtimizada() {
         origin: origem,
         destination: destino,
         waypoints: waypoints,
-        optimizeWaypoints: true,
+        optimizeWaypoints: querOtimizar,
         travelMode: google.maps.TravelMode.DRIVING
     };
 
     directionsService.route(request, function(result, status) {
         if (status === google.maps.DirectionsStatus.OK) {
-            // Desenha a linha azul no mapa
             directionsRenderer.setDirections(result);
             
-            // NOVO: Chama a função que desenha a lista com os botões
+            // Chama a função da lista de botões
             gerarBotoesDeNavegacao(result);
         } else {
             alert("Não foi possível calcular a rota. Erro: " + status);
         }
     });
-    // Função para desenhar os botões de GPS
+}
+
+// Função separada e organizada para gerar a lista final de botões
 function gerarBotoesDeNavegacao(result) {
     const divLista = document.getElementById("lista-paradas");
-    // Limpa a lista anterior e coloca um título
     divLista.innerHTML = "<h3 style='margin-top: 25px;'>📱 Rota Pronta para Navegar:</h3>"; 
 
-    // O Google divide a rota em partes chamadas "legs" (pernas). 
-    // A perna 0 é da Origem até a 1ª Parada. A perna 1 é da 1ª Parada até a 2ª...
     const legs = result.routes[0].legs; 
 
     for (let i = 0; i < legs.length; i++) {
-        const enderecoParada = legs[i].end_address; // O endereço onde essa parte termina
+        const enderecoParada = legs[i].end_address; 
         const numero = i + 1;
         
-        // Se for a última etapa da viagem, escrevemos "Destino Final"
         const titulo = (numero === legs.length) ? "🏁 Destino Final" : `🛑 Parada ${numero}`;
 
-        // Cria a caixinha branca para o item
         const divItem = document.createElement("div");
         divItem.className = "parada-item";
 
-        // Adiciona o texto do endereço
         const texto = document.createElement("p");
         texto.innerHTML = `<strong>${titulo}:</strong> ${enderecoParada}`;
 
-        // Cria o botão que aciona o app de GPS do usuário
         const btnNavegar = document.createElement("a");
         btnNavegar.className = "btn-navegar";
         btnNavegar.innerText = "Navegar 🚗";
         
-        // O comando 'geo:' diz ao sistema do celular para abrir o app de mapas padrão
         const enderecoFormatado = encodeURIComponent(enderecoParada);
         btnNavegar.href = `geo:0,0?q=${enderecoFormatado}`;
 
-        // Junta tudo e joga na tela
         divItem.appendChild(texto);
         divItem.appendChild(btnNavegar);
         divLista.appendChild(divItem);
     }
-    document.addEventListener("DOMContentLoaded", function() {
-    // ... todo o seu código anterior que já está aqui dentro ...
-
-    // NOVO: Lógica da Câmera
-    const inputFoto = document.getElementById("foto-destino");
-    const campoDestino = document.getElementById("destino");
-
-    inputFoto.addEventListener("change", function(evento) {
-        const arquivo = evento.target.files[0];
-        
-        if (arquivo) {
-            // Muda o texto do campo para avisar o usuário que está lendo
-            campoDestino.value = "Lendo imagem... Aguarde ⏳";
-            
-            // Chama a Inteligência Artificial para ler a foto em Português ('por')
-            Tesseract.recognize(
-                arquivo,
-                'por',
-                { logger: info => console.log(info) } // Mostra o progresso no console
-            ).then(({ data: { text } }) => {
-                // Quando terminar de ler, joga o texto extraído no campo
-                // Removemos quebras de linha para ficar um endereço reto
-                const textoLimpo = text.replace(/\n/g, ', ').trim();
-                campoDestino.value = textoLimpo;
-                
-                alert("Texto extraído com sucesso! Verifique e corrija se necessário.");
-            }).catch(erro => {
-                campoDestino.value = "";
-                alert("Erro ao tentar ler a imagem.");
-                console.error(erro);
-            });
-        }
-    });
-});
-}
 }
