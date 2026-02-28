@@ -2,6 +2,30 @@ let mapa;
 let directionsService;
 let directionsRenderer;
 
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const auth = getAuth();
+const db = getFirestore();
+let usuarioLogado = null;
+
+// Verifica se o motorista está logado
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        usuarioLogado = user;
+        // Busca o nome do motorista no Banco de Dados para dar as boas-vindas no menu
+        const docRef = doc(db, "usuarios", user.uid);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            document.querySelector(".menu-perfil p").innerText = `Olá, ${docSnap.data().nome}!`;
+        }
+    } else {
+        // Se não tiver logado, manda de volta para a tela de login
+        window.location.href = "login.html";
+    }
+});
+
 function iniciarMapa() {
     const centroInicial = { lat: -23.55052, lng: -46.633309 };
 
