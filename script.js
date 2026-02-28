@@ -75,35 +75,28 @@ document.addEventListener("DOMContentLoaded", function() {
         inputFoto.capture = "environment";
         inputFoto.style.display = "none";
 
-        // --- LÓGICA TURBINADA DE LEITURA DE FOTO ---
         inputFoto.addEventListener("change", function(evento) {
             const arquivo = evento.target.files[0];
             if (arquivo) {
                 input.value = "Tratando imagem... ⏳";
 
-                // Pega o arquivo e transforma em imagem na memória
                 const leitor = new FileReader();
                 leitor.onload = function(e) {
                     const img = new Image();
                     img.onload = function() {
-                        // Cria uma "tela" invisível para tratar a foto
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
 
-                        // O SEGREDO: Aumenta a imagem em 2x para a IA conseguir ler notas pequenas!
                         const escala = 2; 
                         canvas.width = img.width * escala;
                         canvas.height = img.height * escala;
 
-                        // Desenha a imagem gigante
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                        // Transforma o canvas de volta em imagem de alta qualidade
                         const imagemMelhorada = canvas.toDataURL('image/jpeg');
 
                         input.value = "Iniciando IA... ⏳";
 
-                        // Manda a imagem gigante pro Tesseract!
                         Tesseract.recognize(
                             imagemMelhorada,
                             'por',
@@ -119,23 +112,25 @@ document.addEventListener("DOMContentLoaded", function() {
                             const linhas = text.split('\n');
                             let enderecoEncontrado = "";
 
-                            const regraEndereco = /(rua|avenida|av\.|av|travessa|alameda|praça|rodovia|estrada)\s+.*?\d+/i;
+                            // Regra mais relaxada: Procura "rua", "av", etc., mesmo que tenha sujeira no meio
+                            const regraEndereco = /(rua|avenida|av\.|av|travessa|alameda|praça|rodovia|estrada)/i;
 
                             for (let i = 0; i < linhas.length; i++) {
                                 let linha = linhas[i].trim();
-                                if (regraEndereco.test(linha)) {
+                                if (regraEndereco.test(linha) && /\d/.test(linha)) {
                                     enderecoEncontrado = linha;
                                     break;
                                 }
                             }
 
                             if (enderecoEncontrado !== "") {
+                                // Limpa a linha que achou
                                 enderecoEncontrado = enderecoEncontrado.replace(/[|_[\]{}<>]/g, '').trim();
                                 input.value = enderecoEncontrado;
                             } else {
-                                // Se ainda assim falhar, mostra o que ele achou pra gente diagnosticar
-                                input.value = "Não encontrou Rua/Av na leitura.";
-                                console.log("TEXTO PURO DA IA:", text); 
+                                // MODO RAIO-X: Se não achou a palavra Rua certinha, joga o texto limpo na tela pra você ver o que ele leu!
+                                let textoRaioX = text.replace(/\n/g, ' ').replace(/[|_[\]{}<>]/g, '').replace(/\s+/g, ' ').trim();
+                                input.value = textoRaioX.substring(0, 70); // Mostra os primeiros 70 caracteres
                             }
 
                             input.focus();
