@@ -150,5 +150,39 @@ function gerarBotoesDeNavegacao(result) {
         divItem.appendChild(btnNavegar);
         divLista.appendChild(divItem);
     }
+    document.addEventListener("DOMContentLoaded", function() {
+    // ... todo o seu código anterior que já está aqui dentro ...
+
+    // NOVO: Lógica da Câmera
+    const inputFoto = document.getElementById("foto-destino");
+    const campoDestino = document.getElementById("destino");
+
+    inputFoto.addEventListener("change", function(evento) {
+        const arquivo = evento.target.files[0];
+        
+        if (arquivo) {
+            // Muda o texto do campo para avisar o usuário que está lendo
+            campoDestino.value = "Lendo imagem... Aguarde ⏳";
+            
+            // Chama a Inteligência Artificial para ler a foto em Português ('por')
+            Tesseract.recognize(
+                arquivo,
+                'por',
+                { logger: info => console.log(info) } // Mostra o progresso no console
+            ).then(({ data: { text } }) => {
+                // Quando terminar de ler, joga o texto extraído no campo
+                // Removemos quebras de linha para ficar um endereço reto
+                const textoLimpo = text.replace(/\n/g, ', ').trim();
+                campoDestino.value = textoLimpo;
+                
+                alert("Texto extraído com sucesso! Verifique e corrija se necessário.");
+            }).catch(erro => {
+                campoDestino.value = "";
+                alert("Erro ao tentar ler a imagem.");
+                console.error(erro);
+            });
+        }
+    });
+});
 }
 }

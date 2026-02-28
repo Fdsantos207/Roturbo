@@ -29,7 +29,23 @@
         <div id="mapa">O mapa aparecerá aqui...</div>
         <div id="lista-paradas"></div>
     </div>
+    <label>Destino Final:</label>
+        <div class="parada-grupo">
+            <input type="text" id="destino" placeholder="Digite o destino...">
+            
+            <label class="btn-camera" for="foto-destino">
+                📸
+            </label>
+            <input type="file" id="foto-destino" accept="image/*" capture="environment" style="display: none;">
+        </div>
 
+        <button id="btn-calcular">Otimizar Minha Rota</button>
+
+        <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=SUA_CHAVE_AQUI&libraries=places&callback=iniciarMapa" async defer></script>
+    <script src="script.js"></script>
+    </body>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQiTazerx3rHFGaxTYEkbWzEuxS6TiK2w&libraries=places&callback=iniciarMapa" async defer></script>
     <script src="script.js"></script>
 </body>
