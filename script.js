@@ -15,12 +15,10 @@ function iniciarMapa() {
     directionsRenderer = new google.maps.DirectionsRenderer();
     directionsRenderer.setMap(mapa);
 
-    // Ativa o Autocomplete para a Origem e o Destino logo que o app carrega
     configurarAutocomplete(document.getElementById("origem"));
     configurarAutocomplete(document.getElementById("destino"));
 }
 
-// Essa função conecta o campo de texto ao banco de dados do Google
 function configurarAutocomplete(inputElement) {
     new google.maps.places.Autocomplete(inputElement, {
         types: ['geocode', 'establishment'],
@@ -33,16 +31,12 @@ document.addEventListener("DOMContentLoaded", function() {
     const btnAddParada = document.getElementById("btn-add-parada");
     const containerParadas = document.getElementById("container-paradas");
 
-    // AÇÃO DE CALCULAR
     btnCalcular.addEventListener("click", calcularRotaOtimizada);
 
-    // AÇÃO DE ADICIONAR NOVA PARADA (+)
     btnAddParada.addEventListener("click", function() {
-        // Cria a caixinha principal
         const div = document.createElement("div");
         div.className = "parada-grupo";
 
-        // 1. BOTÃO SUBIR ↑
         const btnSubir = document.createElement("button");
         btnSubir.type = "button";
         btnSubir.className = "btn-mover";
@@ -53,7 +47,6 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         };
 
-        // 2. BOTÃO DESCER ↓
         const btnDescer = document.createElement("button");
         btnDescer.type = "button";
         btnDescer.className = "btn-mover";
@@ -64,13 +57,11 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         };
 
-        // 3. CAMPO DE TEXTO
         const input = document.createElement("input");
         input.type = "text";
         input.className = "input-parada";
         input.placeholder = "Digite o endereço...";
 
-        // 4. BOTÃO DA CÂMERA 📸
         const idUnico = "foto-" + Date.now(); 
         const labelCamera = document.createElement("label");
         labelCamera.className = "btn-camera";
@@ -84,7 +75,7 @@ document.addEventListener("DOMContentLoaded", function() {
         inputFoto.capture = "environment";
         inputFoto.style.display = "none";
 
-       // Lógica para ler a foto com a IA (Tesseract) + FILTRO INTELIGENTE
+       // Lógica para ler a foto com a IA (Tesseract) + FILTRO ULTRA FOCADO
         inputFoto.addEventListener("change", function(evento) {
             const arquivo = evento.target.files[0];
             if (arquivo) {
@@ -104,30 +95,33 @@ document.addEventListener("DOMContentLoaded", function() {
                         }
                     }
                 ).then(({ data: { text } }) => {
-                    // --- INÍCIO DO FILTRO DE NOTA FISCAL ---
+                    // --- INÍCIO DO FILTRO FOCADO NA RUA ---
                     const linhas = text.split('\n');
-                    let linhasValidas = [];
-                    const regraEndereco = /rua|avenida|av\.|travessa|alameda|praça|rodovia|cep/i;
+                    let ruaEncontrada = "";
 
-                    linhas.forEach(linha => {
-                        // Exige a palavra chave E algum número na linha
-                        if (regraEndereco.test(linha) && /\d/.test(linha)) {
-                            linhasValidas.push(linha.trim());
+                    for (let i = 0; i < linhas.length; i++) {
+                        let linha = linhas[i].trim();
+                        // Procura de "Rua/Av" pra frente
+                        let match = linha.match(/(rua|avenida|av\.|travessa|alameda|praça|rodovia)[\s\S]*/i);
+                        
+                        if (match) {
+                            // Pega o texto a partir da Rua, e corta fora se tiver um traço (bairro/cidade)
+                            ruaEncontrada = match[0].split('-')[0].trim();
+                            break; // Para na PRIMEIRA rua que achar!
                         }
-                    });
-
-                    let textoFinal = "";
-
-                    if (linhasValidas.length > 0) {
-                        textoFinal = linhasValidas.join(', ');
-                    } else {
-                        // Plano B: Se não achou rua, pega o começo do texto limpo
-                        textoFinal = text.replace(/\n/g, ' ').substring(0, 60);
                     }
 
-                    // Joga no campo e foca para abrir as sugestões do Google
-                    input.value = textoFinal;
-                    input.focus(); 
+                    if (ruaEncontrada !== "") {
+                        input.value = ruaEncontrada;
+                    } else {
+                        // Se não achar nada, coloca pelo menos o começo do texto
+                        input.value = text.replace(/\n/g, ' ').substring(0, 40);
+                    }
+
+                    // Magia: Foca no campo e simula digitação para abrir a lista do Google!
+                    input.focus();
+                    const eventoInput = new Event('input', { bubbles: true });
+                    input.dispatchEvent(eventoInput);
                     // --- FIM DO FILTRO ---
 
                 }).catch(erro => {
@@ -137,7 +131,6 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        // 5. BOTÃO EXCLUIR X
         const btnRemover = document.createElement("button");
         btnRemover.type = "button";
         btnRemover.className = "btn-remover";
@@ -146,7 +139,6 @@ document.addEventListener("DOMContentLoaded", function() {
             containerParadas.removeChild(div);
         };
 
-        // Coloca todos os botões e o campo de texto dentro da linha na ordem certa!
         div.appendChild(btnSubir);
         div.appendChild(btnDescer);
         div.appendChild(input);
@@ -156,7 +148,6 @@ document.addEventListener("DOMContentLoaded", function() {
         
         containerParadas.appendChild(div);
         
-        // Ativa o Autocomplete no campo que acabou de nascer
         configurarAutocomplete(input);
     });
 });
@@ -166,7 +157,6 @@ function calcularRotaOtimizada() {
     const destino = document.getElementById("destino").value;
     const inputsParadas = document.querySelectorAll(".input-parada");
 
-    // Verifica se o usuário quer otimizar (se o checkbox não existir no HTML, otimiza por padrão)
     const checkboxOtimizar = document.getElementById("otimizar-rota");
     const querOtimizar = checkboxOtimizar ? checkboxOtimizar.checked : true;
 
@@ -197,8 +187,6 @@ function calcularRotaOtimizada() {
     directionsService.route(request, function(result, status) {
         if (status === google.maps.DirectionsStatus.OK) {
             directionsRenderer.setDirections(result);
-            
-            // Chama a função da lista de botões
             gerarBotoesDeNavegacao(result);
         } else {
             alert("Não foi possível calcular a rota. Erro: " + status);
@@ -206,7 +194,6 @@ function calcularRotaOtimizada() {
     });
 }
 
-// Função separada e organizada para gerar a lista final de botões
 function gerarBotoesDeNavegacao(result) {
     const divLista = document.getElementById("lista-paradas");
     divLista.innerHTML = "<h3 style='margin-top: 25px;'>📱 Rota Pronta para Navegar:</h3>"; 
