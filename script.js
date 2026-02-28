@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", function() {
         input.className = "input-parada";
         input.placeholder = "Digite o endereço...";
 
-        // 4. BOTÃO DA CÂMERA 📸 (NOVO)
+        // 4. BOTÃO DA CÂMERA 📸
         const idUnico = "foto-" + Date.now(); 
         const labelCamera = document.createElement("label");
         labelCamera.className = "btn-camera";
@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", function() {
         inputFoto.capture = "environment";
         inputFoto.style.display = "none";
 
-       // Lógica para ler a foto com a IA (Tesseract)
+       // Lógica para ler a foto com a IA (Tesseract) + FILTRO INTELIGENTE
         inputFoto.addEventListener("change", function(evento) {
             const arquivo = evento.target.files[0];
             if (arquivo) {
@@ -94,7 +94,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     arquivo,
                     'por',
                     { 
-                        // NOVO: Mostra a porcentagem exata do progresso na tela!
                         logger: info => {
                             if (info.status === 'recognizing text') {
                                 const progresso = Math.round(info.progress * 100);
@@ -105,9 +104,32 @@ document.addEventListener("DOMContentLoaded", function() {
                         }
                     }
                 ).then(({ data: { text } }) => {
-                    // Pega o texto, limpa as quebras de linha e joga no campo
-                    const textoLimpo = text.replace(/\n/g, ', ').trim();
-                    input.value = textoLimpo;
+                    // --- INÍCIO DO FILTRO DE NOTA FISCAL ---
+                    const linhas = text.split('\n');
+                    let linhasValidas = [];
+                    const regraEndereco = /rua|avenida|av\.|travessa|alameda|praça|rodovia|cep/i;
+
+                    linhas.forEach(linha => {
+                        // Exige a palavra chave E algum número na linha
+                        if (regraEndereco.test(linha) && /\d/.test(linha)) {
+                            linhasValidas.push(linha.trim());
+                        }
+                    });
+
+                    let textoFinal = "";
+
+                    if (linhasValidas.length > 0) {
+                        textoFinal = linhasValidas.join(', ');
+                    } else {
+                        // Plano B: Se não achou rua, pega o começo do texto limpo
+                        textoFinal = text.replace(/\n/g, ' ').substring(0, 60);
+                    }
+
+                    // Joga no campo e foca para abrir as sugestões do Google
+                    input.value = textoFinal;
+                    input.focus(); 
+                    // --- FIM DO FILTRO ---
+
                 }).catch(erro => {
                     input.value = "";
                     alert("Erro ao tentar ler a imagem. Tente tirar a foto mais de perto.");
