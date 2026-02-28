@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roturbo - Acesso</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="painel-app" style="max-width: 400px; margin: 100px auto; text-align: center;">
+        <h1>📍 Roturbo</h1>
+        <div id="msg" style="color: red; margin-bottom: 10px;"></div>
+
+        <div id="box-login">
+            <input type="email" id="email" placeholder="E-mail">
+            <input type="password" id="senha" placeholder="Senha">
+            <button id="btnEntrar">Entrar</button>
+            <p onclick="alternar()" style="cursor:pointer; color: blue;">Não tem conta? Cadastre-se</p>
+        </div>
+
+        <div id="box-cadastro" style="display:none;">
+            <input type="text" id="nome" placeholder="Nome Completo">
+            <input type="number" id="celular" placeholder="Celular com DDD">
+            <input type="email" id="c-email" placeholder="E-mail">
+            <input type="password" id="c-senha" placeholder="Senha (mín. 6 dígitos)">
+            <button id="btnSalvar">Criar Conta</button>
+            <p onclick="alternar()" style="cursor:pointer; color: blue;">Já tem conta? Entre</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // COLOQUE SUAS CHAVES AQUI:
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_DOMINIO",
+            projectId: "SEU_ID",
+            storageBucket: "SEU_BUCKET",
+            messagingSenderId: "SEU_SENDER_ID",
+            appId: "SEU_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Lógica de Cadastro
+        document.getElementById('btnSalvar').onclick = async () => {
+            const nome = document.getElementById('nome').value;
+            const cel = document.getElementById('celular').value;
+            const email = document.getElementById('c-email').value;
+            const senha = document.getElementById('c-senha').value;
+
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, senha);
+                await setDoc(doc(db, "usuarios", cred.user.uid), {
+                    nome: nome,
+                    celular: cel,
+                    email: email
+                });
+                window.location.href = "index.html";
+            } catch (e) { alert("Erro: " + e.message); }
+        };
+
+        // Lógica de Login
+        document.getElementById('btnEntrar').onclick = async () => {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, senha);
+                window.location.href = "index.html";
+            } catch (e) { alert("Dados incorretos!"); }
+        };
+    </script>
+    <script>
+        function alternar() {
+            const login = document.getElementById('box-login');
+            const cad = document.getElementById('box-cadastro');
+            login.style.display = login.style.display === 'none' ? 'block' : 'none';
+            cad.style.display = cad.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
