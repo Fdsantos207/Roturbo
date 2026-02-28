@@ -84,21 +84,33 @@ document.addEventListener("DOMContentLoaded", function() {
         inputFoto.capture = "environment";
         inputFoto.style.display = "none";
 
-        // Lógica para ler a foto com a IA (Tesseract)
+       // Lógica para ler a foto com a IA (Tesseract)
         inputFoto.addEventListener("change", function(evento) {
             const arquivo = evento.target.files[0];
             if (arquivo) {
-                input.value = "Lendo imagem... Aguarde ⏳";
+                input.value = "Iniciando motor da câmera... ⏳";
+                
                 Tesseract.recognize(
                     arquivo,
                     'por',
-                    { logger: info => console.log(info) }
+                    { 
+                        // NOVO: Mostra a porcentagem exata do progresso na tela!
+                        logger: info => {
+                            if (info.status === 'recognizing text') {
+                                const progresso = Math.round(info.progress * 100);
+                                input.value = `Lendo imagem: ${progresso}% ⏳`;
+                            } else {
+                                input.value = "Preparando IA... ⏳";
+                            }
+                        }
+                    }
                 ).then(({ data: { text } }) => {
+                    // Pega o texto, limpa as quebras de linha e joga no campo
                     const textoLimpo = text.replace(/\n/g, ', ').trim();
                     input.value = textoLimpo;
                 }).catch(erro => {
                     input.value = "";
-                    alert("Erro ao tentar ler a imagem.");
+                    alert("Erro ao tentar ler a imagem. Tente tirar a foto mais de perto.");
                 });
             }
         });
