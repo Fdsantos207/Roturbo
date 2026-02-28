@@ -162,3 +162,122 @@ button:hover {
 .btn-navegar:hover {
     background-color: #333;
 }
+
+/* =========================================
+   NOVO: BARRA SUPERIOR E MENU HAMBÚRGUER
+   ========================================= */
+.barra-superior {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #000;
+    color: white;
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    box-sizing: border-box;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.logo-texto {
+    margin: 0;
+    font-size: 20px;
+    margin-left: 15px;
+}
+
+.btn-hamburguer {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    width: auto;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+/* O painel principal precisa descer um pouco para não ficar embaixo da barra */
+.painel-app {
+    margin-top: 70px; 
+}
+
+/* O Menu Lateral (Escondido por padrão) */
+.menu-lateral {
+    position: fixed;
+    top: 0;
+    left: -280px; /* Fica fora da tela */
+    width: 280px;
+    height: 100vh;
+    background-color: #fff;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    transition: 0.3s ease; /* Animação suave de deslizar */
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Quando o JS adicionar essa classe, o menu entra na tela */
+.menu-lateral.aberto {
+    left: 0; 
+}
+
+.btn-fechar {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+    width: auto;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+.menu-perfil {
+    padding: 30px 20px;
+    background-color: #f4f4f9;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+.foto-perfil {
+    font-size: 40px;
+    background: #e2e8f0;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+}
+
+.menu-perfil p {
+    margin: 0;
+    font-weight: bold;
+    color: #333;
+}
+
+.menu-links {
+    display: flex;
+    flex-direction: column;
+    padding: 15px 0;
+}
+
+.menu-item {
+    padding: 15px 20px;
+    color: #333;
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.menu-item:hover, .menu-item.ativo {
+    background-color: #f8f9fa;
+    color: #007bff;
+    border-left: 4px solid #007bff;
+}

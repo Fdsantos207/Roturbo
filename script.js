@@ -27,6 +27,14 @@ function configurarAutocomplete(inputElement) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+    // === LÓGICA DO MENU HAMBÚRGUER ===
+    const btnMenu = document.getElementById("btn-menu");
+    const btnFecharMenu = document.getElementById("btn-fechar-menu");
+    const menuLateral = document.getElementById("menu-lateral");
+
+    btnMenu.addEventListener("click", () => menuLateral.classList.add("aberto"));
+    btnFecharMenu.addEventListener("click", () => menuLateral.classList.remove("aberto"));
+    // ==================================
     const btnCalcular = document.getElementById("btn-calcular");
     const btnAddParada = document.getElementById("btn-add-parada");
     const containerParadas = document.getElementById("container-paradas");
