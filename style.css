@@ -1,4 +1,6 @@
-/* Estilos básicos para deixar com cara de App */
+/* =========================================
+   1. ESTILOS GERAIS E ESTRUTURA
+   ========================================= */
 body { 
     font-family: Arial, sans-serif; 
     background-color: #f4f4f9; 
@@ -15,6 +17,7 @@ body {
     box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
 }
 
+/* Aplica para os inputs e botões principais (100% da largura) */
 input, button { 
     width: 100%; 
     padding: 12px; 
@@ -36,6 +39,82 @@ button:hover {
     background-color: #218838;
 }
 
+/* Botão azul para adicionar paradas */
+#btn-add-parada {
+    background-color: #007bff;
+    margin-bottom: 20px;
+}
+#btn-add-parada:hover {
+    background-color: #0056b3;
+}
+
+/* =========================================
+   2. O GRUPO DE PARADAS (BOTÕES PEQUENOS E CAMPO)
+   ========================================= */
+.parada-grupo {
+    display: flex;
+    align-items: center; /* Centraliza os botões e o campo na mesma linha */
+    gap: 6px; /* Espaço pequeno e elegante entre os itens */
+    margin-bottom: 12px;
+}
+
+/* Tira a margem padrão para não entortar a linha */
+.parada-grupo input, 
+.parada-grupo button, 
+.parada-grupo label {
+    margin-bottom: 0; 
+}
+
+/* O SEGREDO: Faz o campo de endereço esticar para a rua caber inteira */
+.parada-grupo input {
+    flex: 1; 
+    padding: 10px;
+    font-size: 14px;
+}
+
+/* Estilo Base dos botõezinhos quadrados (36x36) */
+.btn-mover, .btn-remover, .btn-camera {
+    width: 36px; 
+    height: 36px; 
+    padding: 0; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border-radius: 6px; 
+    cursor: pointer;
+    border: none;
+    flex-shrink: 0; /* Impede que o botão seja esmagado pelo campo de texto */
+}
+
+/* Cores de cada botãozinho */
+.btn-mover {
+    background-color: #e2e8f0; 
+    color: #475569;
+}
+.btn-mover:hover {
+    background-color: #cbd5e1;
+}
+
+.btn-camera {
+    background-color: #fbbf24; 
+    color: #000;
+}
+.btn-camera:hover {
+    background-color: #f59e0b;
+}
+
+.btn-remover {
+    background-color: #ef4444; 
+    color: white;
+}
+.btn-remover:hover {
+    background-color: #dc2626;
+}
+
+/* =========================================
+   3. MAPA E NAVEGAÇÃO FINAL
+   ========================================= */
 #mapa { 
     width: 100%; 
     height: 350px; 
@@ -51,36 +130,7 @@ button:hover {
 #lista-paradas {
     margin-top: 15px;
 }
-/* Botão azul para diferenciar do botão principal verde */
-#btn-add-parada {
-    background-color: #007bff;
-    margin-bottom: 20px;
-}
-#btn-add-parada:hover {
-    background-color: #0056b3;
-}
 
-/* Alinha o campo de texto e o botão X lado a lado */
-.parada-grupo {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.parada-grupo input {
-    margin-bottom: 0; /* Tira a margem padrão para alinhar com o botão */
-}
-
-/* O botão X vermelho */
-.btn-remover {
-    background-color: #dc3545;
-    width: 45px;
-    padding: 0;
-}
-.btn-remover:hover {
-    background-color: #c82333;
-}
-/* Estilo da lista final de navegação */
 .parada-item {
     background: #fff;
     border: 1px solid #ddd;
@@ -99,32 +149,16 @@ button:hover {
     color: #333;
 }
 
-/* O Botão de Navegar */
 .btn-navegar {
     background-color: #000;
     color: #fff;
     text-align: center;
     padding: 12px;
     border-radius: 5px;
-    text-decoration: none; /* Tira o sublinhado do texto */
+    text-decoration: none; 
     font-weight: bold;
     display: block;
 }
 .btn-navegar:hover {
     background-color: #333;
-}
-.btn-camera {
-    background-color: #ffc107;
-    color: #000;
-    width: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 20px;
-    flex-shrink: 0; /* Garante que o botão não seja espremido */
-}
-.btn-camera:hover {
-    background-color: #e0a800;
 }
