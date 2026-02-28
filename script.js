@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", function() {
         inputFoto.capture = "environment";
         inputFoto.style.display = "none";
 
-       // Lógica para ler a foto com a IA (Tesseract) + FILTRO ULTRA FOCADO
+       // Lógica da Câmera com o FILTRO PURO DE ENDEREÇO
         inputFoto.addEventListener("change", function(evento) {
             const arquivo = evento.target.files[0];
             if (arquivo) {
@@ -95,33 +95,32 @@ document.addEventListener("DOMContentLoaded", function() {
                         }
                     }
                 ).then(({ data: { text } }) => {
-                    // --- INÍCIO DO FILTRO FOCADO NA RUA ---
+                    // --- FILTRO ROBUSTO ---
                     const linhas = text.split('\n');
-                    let ruaEncontrada = "";
+                    let enderecoEncontrado = "";
+
+                    // Procura uma linha que tenha Rua/Av/etc E pelo menos um número nela
+                    const regraEndereco = /(rua|avenida|av\.|av|travessa|alameda|praça|rodovia|estrada)\s+.*?\d+/i;
 
                     for (let i = 0; i < linhas.length; i++) {
                         let linha = linhas[i].trim();
-                        // Procura de "Rua/Av" pra frente
-                        let match = linha.match(/(rua|avenida|av\.|travessa|alameda|praça|rodovia)[\s\S]*/i);
-                        
-                        if (match) {
-                            // Pega o texto a partir da Rua, e corta fora se tiver um traço (bairro/cidade)
-                            ruaEncontrada = match[0].split('-')[0].trim();
-                            break; // Para na PRIMEIRA rua que achar!
+                        if (regraEndereco.test(linha)) {
+                            enderecoEncontrado = linha;
+                            break; // Achou a primeira linha boa, para de procurar!
                         }
                     }
 
-                    if (ruaEncontrada !== "") {
-                        input.value = ruaEncontrada;
+                    if (enderecoEncontrado !== "") {
+                        // Limpa "sujeiras" que o OCR costuma ler errado tipo | ou _
+                        enderecoEncontrado = enderecoEncontrado.replace(/[|_[\]{}<>]/g, '').trim();
+                        input.value = enderecoEncontrado;
                     } else {
-                        // Se não achar nada, coloca pelo menos o começo do texto
-                        input.value = text.replace(/\n/g, ' ').substring(0, 40);
+                        // Se não achar nada, coloca pelo menos um pedaço do texto pra você ver o que ele leu
+                        input.value = text.replace(/\n/g, ' ').substring(0, 50);
                     }
 
-                    // Magia: Foca no campo e simula digitação para abrir a lista do Google!
+                    // Foca no campo para você poder dar um "espaço" e o Google sugerir
                     input.focus();
-                    const eventoInput = new Event('input', { bubbles: true });
-                    input.dispatchEvent(eventoInput);
                     // --- FIM DO FILTRO ---
 
                 }).catch(erro => {
