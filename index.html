@@ -12,12 +12,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
     <script>
-      // Registra o Service Worker para o PWA funcionar
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('PWA: Service Worker registrado!'))
-            .catch(err => console.log('PWA: Erro ao registrar', err));
+            .then(reg => console.log('PWA ativo'))
+            .catch(err => console.log('Erro PWA', err));
         });
       }
     </script>
@@ -31,12 +30,10 @@
 
     <div id="menu-lateral" class="menu-lateral">
         <button id="btn-fechar-menu" class="btn-fechar">X</button>
-        
         <div class="menu-perfil">
             <div class="foto-perfil">🚗</div>
             <p>Olá, Motorista!</p>
         </div>
-
         <nav class="menu-links">
             <a href="#" class="menu-item ativo">🗺️ Rota Inteligente</a>
             <a href="#" class="menu-item">🛣️ Minhas Rotas (KM)</a>
@@ -47,14 +44,11 @@
     </div>
 
     <div class="painel-app">
-        <h2>📍 Roteirização</h2>
-        
         <label>Ponto de Partida:</label>
         <input type="text" id="origem" placeholder="Digite a origem...">
 
         <label>Paradas:</label>
         <div id="container-paradas"></div>
-        
         <button id="btn-add-parada" type="button">+ Adicionar Parada</button>
 
         <label>Destino Final:</label>
@@ -62,18 +56,14 @@
 
         <button id="btn-calcular">Otimizar Minha Rota</button>
 
-        <div id="mapa" style="height: 400px; width: 100%; border-radius: 10px; margin-top: 15px;">
+        <div id="mapa" style="height: 400px; width: 100%; border-radius: 10px; margin-top: 15px; background: #eee; display: flex; align-items: center; justify-content: center;">
             Carregando mapa...
         </div>
-        
         <div id="lista-paradas"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQiTazerx3rHFGaxTYEkbWzEuxS6TiK2w&libraries=places&callback=iniciarMapa" async defer></script>
-
-    <script type="module" src="script.js"></script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -91,12 +81,14 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        // Se não tiver logado, ele pula para o login.html automaticamente
         onAuthStateChanged(auth, (user) => {
             if (!user) {
                 window.location.href = "login.html";
             }
         });
     </script>
+
+    <script type="module" src="script.js"></script>
+
 </body>
 </html>
