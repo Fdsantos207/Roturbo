@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App de Roteirização</title>
+    <title>Roturbo - Roteirização</title>
     <link rel="stylesheet" href="style.css">
+    
     <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-
-<script>
-  // Registra o Service Worker
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('PWA: Service Worker registrado!', reg))
-        .catch(err => console.log('PWA: Erro ao registrar', err));
-    });
-  }
-</script>
+    <script>
+      // Registra o Service Worker para o PWA funcionar
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('PWA: Service Worker registrado!'))
+            .catch(err => console.log('PWA: Erro ao registrar', err));
+        });
+      }
+    </script>
 </head>
 <body>
 
@@ -48,7 +47,7 @@
     </div>
 
     <div class="painel-app">
-        <h2>📍 Roturbo</h2>
+        <h2>📍 Roteirização</h2>
         
         <label>Ponto de Partida:</label>
         <input type="text" id="origem" placeholder="Digite a origem...">
@@ -59,29 +58,46 @@
         <button id="btn-add-parada" type="button">+ Adicionar Parada</button>
 
         <label>Destino Final:</label>
-
-        <label>Destino Final:</label>
         <input type="text" id="destino" placeholder="Digite o destino...">
 
         <button id="btn-calcular">Otimizar Minha Rota</button>
 
-        <div id="mapa">O mapa aparecerá aqui...</div>
+        <div id="mapa" style="height: 400px; width: 100%; border-radius: 10px; margin-top: 15px;">
+            Carregando mapa...
+        </div>
+        
         <div id="lista-paradas"></div>
     </div>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=SUA_CHAVE_AQUI&libraries=places&callback=iniciarMapa" async defer></script>
-    <script src="script.js"></script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQiTazerx3rHFGaxTYEkbWzEuxS6TiK2w&libraries=places&callback=iniciarMapa" async defer></script>
-    <script src="script.js"></script>
+
+    <script type="module" src="script.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // Cole aqui também o seu firebaseConfig para garantir a conexão neste bloco
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQiTazerx3rHFGaxTYEkbWzEuxS6TiK2w",
+            authDomain: "roturbo-xxxx.firebaseapp.com",
+            projectId: "roturbo-xxxx",
+            storageBucket: "roturbo-xxxx.appspot.com",
+            messagingSenderId: "xxxxxxxx",
+            appId: "xxxxxxxx"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Verifica se o usuário está logado. Se não estiver, manda para o login.
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "login.html";
+            }
+        });
+    </script>
 </body>
-// Verifica se o usuário está logado. Se não estiver, manda para o login.
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-const auth = getAuth();
-onAuthStateChanged(auth, (user) => {
-    if (!user) {
-        window.location.href = "login.html";
-    }
-});
 </html>
