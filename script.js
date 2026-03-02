@@ -1,40 +1,49 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// --- CONFIGURAÇÃO DO FIREBASE (Certifique-se de que estas chaves são as suas) ---
+const firebaseConfig = {
+  apiKey: "AIzaSyBceowtEvmh9YJTLpeGR2rYnOSjmXRjH_U",
+  authDomain: "roturbo.firebaseapp.com",
+  projectId: "roturbo",
+  storageBucket: "roturbo.firebasestorage.app",
+  messagingSenderId: "356395708767",
+  appId: "1:356395708767:web:4b4bb608ef29ee2a67c6ea",
+  measurementId: "G-HPRKEGBZK3"
+};
+
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let usuarioLogado = null;
+
 let mapa;
 let directionsService;
 let directionsRenderer;
 
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-const auth = getAuth();
-const db = getFirestore();
-let usuarioLogado = null;
-
-// Verifica se o motorista está logado
+// --- VERIFICAÇÃO DE LOGIN ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         usuarioLogado = user;
-        // Busca o nome do motorista no Banco de Dados para dar as boas-vindas no menu
         const docRef = doc(db, "usuarios", user.uid);
         const docSnap = await getDoc(docRef);
-        
         if (docSnap.exists()) {
             document.querySelector(".menu-perfil p").innerText = `Olá, ${docSnap.data().nome}!`;
         }
     } else {
-        // Se não tiver logado, manda de volta para a tela de login
         window.location.href = "login.html";
     }
 });
 
-function iniciarMapa() {
+window.iniciarMapa = function() {
     const centroInicial = { lat: -23.55052, lng: -46.633309 };
-
     mapa = new google.maps.Map(document.getElementById("mapa"), {
         zoom: 12,
         center: centroInicial,
         mapTypeId: google.maps.MapTypeId.ROADMAP
     });
-
     directionsService = new google.maps.DirectionsService();
     directionsRenderer = new google.maps.DirectionsRenderer();
     directionsRenderer.setMap(mapa);
@@ -51,44 +60,23 @@ function configurarAutocomplete(inputElement) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-    // === LÓGICA DO MENU HAMBÚRGUER ===
     const btnMenu = document.getElementById("btn-menu");
     const btnFecharMenu = document.getElementById("btn-fechar-menu");
     const menuLateral = document.getElementById("menu-lateral");
-
-    btnMenu.addEventListener("click", () => menuLateral.classList.add("aberto"));
-    btnFecharMenu.addEventListener("click", () => menuLateral.classList.remove("aberto"));
-    // ==================================
     const btnCalcular = document.getElementById("btn-calcular");
     const btnAddParada = document.getElementById("btn-add-parada");
     const containerParadas = document.getElementById("container-paradas");
+
+    // Navegação do Menu
+    btnMenu.addEventListener("click", () => menuLateral.classList.add("aberto"));
+    btnFecharMenu.addEventListener("click", () => menuLateral.classList.remove("aberto"));
 
     btnCalcular.addEventListener("click", calcularRotaOtimizada);
 
     btnAddParada.addEventListener("click", function() {
         const div = document.createElement("div");
         div.className = "parada-grupo";
-
-        const btnSubir = document.createElement("button");
-        btnSubir.type = "button";
-        btnSubir.className = "btn-mover";
-        btnSubir.innerHTML = "↑";
-        btnSubir.onclick = function() {
-            if (div.previousElementSibling) {
-                containerParadas.insertBefore(div, div.previousElementSibling);
-            }
-        };
-
-        const btnDescer = document.createElement("button");
-        btnDescer.type = "button";
-        btnDescer.className = "btn-mover";
-        btnDescer.innerHTML = "↓";
-        btnDescer.onclick = function() {
-            if (div.nextElementSibling) {
-                containerParadas.insertBefore(div.nextElementSibling, div);
-            }
-        };
-
+        
         const input = document.createElement("input");
         input.type = "text";
         input.className = "input-parada";
@@ -110,179 +98,113 @@ document.addEventListener("DOMContentLoaded", function() {
         inputFoto.addEventListener("change", function(evento) {
             const arquivo = evento.target.files[0];
             if (arquivo) {
-                input.value = "Tratando imagem... ⏳";
-
-                const leitor = new FileReader();
-                leitor.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-
-                        const escala = 2; 
-                        canvas.width = img.width * escala;
-                        canvas.height = img.height * escala;
-
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                        const imagemMelhorada = canvas.toDataURL('image/jpeg');
-
-                        input.value = "Iniciando IA... ⏳";
-
-                        Tesseract.recognize(
-                            imagemMelhorada,
-                            'por',
-                            { 
-                                logger: info => {
-                                    if (info.status === 'recognizing text') {
-                                        const progresso = Math.round(info.progress * 100);
-                                        input.value = `Lendo imagem: ${progresso}% ⏳`;
-                                    }
-                                }
-                            }
-                        ).then(({ data: { text } }) => {
-                            const linhas = text.split('\n');
-                            let enderecoEncontrado = "";
-
-                            // Regra mais relaxada: Procura "rua", "av", etc., mesmo que tenha sujeira no meio
-                            const regraEndereco = /(rua|avenida|av\.|av|travessa|alameda|praça|rodovia|estrada)/i;
-
-                            for (let i = 0; i < linhas.length; i++) {
-                                let linha = linhas[i].trim();
-                                if (regraEndereco.test(linha) && /\d/.test(linha)) {
-                                    enderecoEncontrado = linha;
-                                    break;
-                                }
-                            }
-
-                            if (enderecoEncontrado !== "") {
-                                // Limpa a linha que achou
-                                enderecoEncontrado = enderecoEncontrado.replace(/[|_[\]{}<>]/g, '').trim();
-                                input.value = enderecoEncontrado;
-                            } else {
-                                // MODO RAIO-X: Se não achou a palavra Rua certinha, joga o texto limpo na tela pra você ver o que ele leu!
-                                let textoRaioX = text.replace(/\n/g, ' ').replace(/[|_[\]{}<>]/g, '').replace(/\s+/g, ' ').trim();
-                                input.value = textoRaioX.substring(0, 70); // Mostra os primeiros 70 caracteres
-                            }
-
-                            input.focus();
-
-                        }).catch(erro => {
-                            input.value = "";
-                            alert("Erro ao ler imagem.");
-                        });
-                    };
-                    img.src = e.target.result;
-                };
-                leitor.readAsDataURL(arquivo);
+                input.value = "Lendo imagem... ⏳";
+                Tesseract.recognize(arquivo, 'por').then(({ data: { text } }) => {
+                    const linhas = text.split('\n');
+                    let rua = "";
+                    const regra = /(rua|avenida|av\.|travessa|praça|rodovia)/i;
+                    for (let l of linhas) {
+                        if (regra.test(l) && /\d/.test(l)) {
+                            rua = l.replace(/[|_[\]{}<>]/g, '').trim();
+                            break;
+                        }
+                    }
+                    input.value = rua || text.substring(0, 40);
+                    input.focus();
+                });
             }
         });
 
         const btnRemover = document.createElement("button");
-        btnRemover.type = "button";
-        btnRemover.className = "btn-remover";
         btnRemover.innerText = "X";
-        btnRemover.onclick = function() {
-            containerParadas.removeChild(div);
-        };
+        btnRemover.onclick = () => containerParadas.removeChild(div);
 
-        div.appendChild(btnSubir);
-        div.appendChild(btnDescer);
         div.appendChild(input);
         div.appendChild(labelCamera);
         div.appendChild(inputFoto);
         div.appendChild(btnRemover);
-        
         containerParadas.appendChild(div);
-        
         configurarAutocomplete(input);
     });
 });
 
-function calcularRotaOtimizada() {
+async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
     const inputsParadas = document.querySelectorAll(".input-parada");
 
-    const checkboxOtimizar = document.getElementById("otimizar-rota");
-    const querOtimizar = checkboxOtimizar ? checkboxOtimizar.checked : true;
-
-    if (origem === "" || destino === "") {
-        alert("Por favor, preencha a origem e o destino final!");
+    if (!origem || !destino) {
+        alert("Preencha origem e destino!");
         return;
     }
 
     let waypoints = [];
-    
-    inputsParadas.forEach(function(input) {
-        if (input.value.trim() !== "") {
-            waypoints.push({
-                location: input.value.trim(),
-                stopover: true
-            });
-        }
+    inputsParadas.forEach(input => {
+        if (input.value) waypoints.push({ location: input.value, stopover: true });
     });
 
     const request = {
         origin: origem,
         destination: destino,
         waypoints: waypoints,
-        optimizeWaypoints: querOtimizar,
+        optimizeWaypoints: true,
         travelMode: google.maps.TravelMode.DRIVING
     };
 
-    directionsService.route(request, function(result, status) {
+    directionsService.route(request, async function(result, status) {
         if (status === google.maps.DirectionsStatus.OK) {
             directionsRenderer.setDirections(result);
+            
+            // Cálculo de distância para o banco de dados
+            const distanciaTotal = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
+            const distanciaKm = (distanciaTotal / 1000).toFixed(2);
+
+            // --- SALVAMENTO NO HISTÓRICO DO FIREBASE ---
+            if (usuarioLogado) {
+                try {
+                    await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), {
+                        distancia: distanciaKm,
+                        data: new Date(),
+                        origem: origem,
+                        destino: destino
+                    });
+                    console.log("KM salvo no banco de dados!");
+                } catch (erro) {
+                    console.error("Erro ao salvar rota:", erro);
+                }
+            }
             gerarBotoesDeNavegacao(result);
-        } else {
-            alert("Não foi possível calcular a rota. Erro: " + status);
         }
     });
-
-    // Dentro do sucesso da rota (DirectionsStatus.OK)
-const distanciaTotal = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
-const distanciaKm = (distanciaTotal / 1000).toFixed(2);
-
-// Salva a rota no histórico do Firebase
-if (usuarioLogado) {
-    await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), {
-        distancia: distanciaKm,
-        data: new Date(),
-        origem: origem,
-        destino: destino
-    });
-    console.log("KM salvo no banco de dados!");
-}
 }
 
 function gerarBotoesDeNavegacao(result) {
     const divLista = document.getElementById("lista-paradas");
-    divLista.innerHTML = "<h3 style='margin-top: 25px;'>📱 Rota Pronta para Navegar:</h3>"; 
-
-    const legs = result.routes[0].legs; 
-
-    for (let i = 0; i < legs.length; i++) {
-        const enderecoParada = legs[i].end_address; 
-        const numero = i + 1;
-        
-        const titulo = (numero === legs.length) ? "🏁 Destino Final" : `🛑 Parada ${numero}`;
-
-        const divItem = document.createElement("div");
-        divItem.className = "parada-item";
-
-        const texto = document.createElement("p");
-        texto.innerHTML = `<strong>${titulo}:</strong> ${enderecoParada}`;
-
-        const btnNavegar = document.createElement("a");
-        btnNavegar.className = "btn-navegar";
-        btnNavegar.innerText = "Navegar 🚗";
-        
-        const enderecoFormatado = encodeURIComponent(enderecoParada);
-        btnNavegar.href = `geo:0,0?q=${enderecoFormatado}`;
-
-        divItem.appendChild(texto);
-        divItem.appendChild(btnNavegar);
-        divLista.appendChild(divItem);
-    }
+    divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>"; 
+    result.routes[0].legs.forEach((leg, i) => {
+        const btn = document.createElement("a");
+        btn.className = "btn-navegar";
+        btn.innerText = `Navegar para Parada ${i+1} 🚗`;
+        btn.href = `geo:0,0?q=${encodeURIComponent(leg.end_address)}`;
+        divLista.appendChild(btn);
+    });
 }
+
+// --- PASSO 4: LÓGICA DE INSTALAÇÃO PWA ---
+let eventoInstalacao;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    eventoInstalacao = e;
+    const banner = document.createElement('div');
+    banner.id = "banner-instalacao";
+    banner.innerHTML = `
+        <div style="background: #000; color: #fff; padding: 15px; text-align: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 999; cursor: pointer; border-bottom: 2px solid #007bff; font-weight: bold;">
+            📲 Toque aqui para instalar o Roturbo no seu celular!
+        </div>
+    `;
+    document.body.appendChild(banner);
+    banner.addEventListener('click', () => {
+        banner.style.display = 'none';
+        eventoInstalacao.prompt();
+    });
+});
