@@ -8,10 +8,18 @@
     <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
 
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
 <script>
+  // Registra o Service Worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(() => console.log("PWA Ativo!"));
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('PWA: Service Worker registrado!', reg))
+        .catch(err => console.log('PWA: Erro ao registrar', err));
+    });
   }
 </script>
 </head>
