@@ -43,7 +43,7 @@
         </nav>
     </div>
 
-    <div class="painel-app">
+    <div id="painel-principal" class="painel-app">
         <label>Ponto de Partida:</label>
         <input type="text" id="origem" placeholder="Digite a origem...">
 
@@ -60,6 +60,18 @@
             Carregando mapa...
         </div>
         <div id="lista-paradas"></div>
+    </div>
+
+    <div id="aba-historico" class="painel-app" style="display: none;">
+        <h2>🛣️ KM Rodados</h2>
+        <div class="card-resumo">
+            <p>Total Acumulado:</p>
+            <h3 id="total-km">0.00 KM</h3>
+        </div>
+        <div id="lista-historico">
+            <p style="text-align:center;">Carregando histórico...</p>
+        </div>
+        <button onclick="voltarParaMapa()" style="margin-top:20px; background:#6c757d; width: 100%;">⬅ Voltar ao Mapa</button>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
