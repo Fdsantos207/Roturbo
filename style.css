@@ -281,3 +281,46 @@ button:hover {
     color: #007bff;
     border-left: 4px solid #007bff;
 }
+
+/* Container que segura o input e os botões da parada */
+.parada-grupo {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Espaço entre o input, a câmera e o X */
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    padding: 5px;
+    border-radius: 8px;
+}
+
+/* O campo de texto cresce para ocupar o espaço disponível */
+.input-parada {
+    flex: 1; 
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+/* Estilo do botão 📸 */
+.btn-camera {
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* Estilo do botão X (remover) */
+.btn-remover-parada {
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Impede o botão de esmagar */
+}

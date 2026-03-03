@@ -135,9 +135,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             };
 
-            const btnRemover = document.createElement("button");
-            btnRemover.innerText = "X";
-            btnRemover.onclick = () => containerParadas.removeChild(div);
+            // Localize onde você cria o btnRemover e troque por:
+const btnRemover = document.createElement("button");
+btnRemover.innerText = "×"; // Use o símbolo de multiplicar que fica mais bonito
+btnRemover.className = "btn-remover-parada"; // Adiciona a classe que criamos no CSS
+btnRemover.onclick = () => containerParadas.removeChild(div);
 
             div.appendChild(input);
             div.appendChild(labelCamera);
