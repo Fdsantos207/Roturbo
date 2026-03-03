@@ -324,3 +324,24 @@ button:hover {
     justify-content: center;
     flex-shrink: 0; /* Impede o botão de esmagar */
 }
+
+.card-resumo {
+    background: #007bff;
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.item-rota {
+    background: #fff;
+    border-left: 5px solid #007bff;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.item-rota small { color: #666; display: block; margin-bottom: 5px; }
+.item-rota p { margin: 2px 0; font-size: 14px; }
