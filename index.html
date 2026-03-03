@@ -65,6 +65,8 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQiTazerx3rHFGaxTYEkbWzEuxS6TiK2w&libraries=places&callback=iniciarMapa" async defer></script>
 
+    <script type="module" src="script.js"></script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -82,13 +84,8 @@
         const auth = getAuth(app);
 
         onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                window.location.href = "login.html";
-            }
+            if (!user) { window.location.href = "login.html"; }
         });
     </script>
-
-    <script type="module" src="script.js"></script>
-
 </body>
 </html>
