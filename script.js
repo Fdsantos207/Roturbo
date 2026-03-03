@@ -60,27 +60,64 @@ function configurarAutocomplete(inputElement) {
     });
 }
 
-// --- LÓGICA DE INTERFACE E HISTÓRICO ---
+// --- NAVEGAÇÃO ENTRE TELAS ---
+function resetarTelas() {
+    document.getElementById("painel-principal").style.display = "none";
+    document.getElementById("aba-historico").style.display = "none";
+    document.getElementById("aba-financeiro").style.display = "none";
+    document.getElementById("menu-lateral").classList.remove("aberto");
+}
+
+window.voltarParaMapa = () => {
+    resetarTelas();
+    document.getElementById("painel-principal").style.display = "block";
+};
+
+// --- LOGICA FINANCEIRA (MEU CORRE) ---
+async function abrirFinanceiro() {
+    resetarTelas();
+    document.getElementById("aba-financeiro").style.display = "block";
+    carregarResumoFinanceiro();
+}
+
+async function carregarResumoFinanceiro() {
+    const lista = document.getElementById("lista-financeiro");
+    const saldoTxt = document.getElementById("saldo-dia");
+    if (!usuarioLogado) return;
+
+    try {
+        const q = query(collection(db, "usuarios", usuarioLogado.uid, "financeiro"), orderBy("data", "desc"));
+        const snap = await getDocs(q);
+        let totalLucro = 0;
+        lista.innerHTML = "<h4>Últimos Lançamentos:</h4>";
+
+        snap.forEach(doc => {
+            const d = doc.data();
+            totalLucro += d.lucro;
+            const div = document.createElement("div");
+            div.className = "item-financeiro";
+            div.innerHTML = `
+                <span>📅 ${d.data.toDate().toLocaleDateString()}</span>
+                <span style="color: #28a745;">+ R$ ${d.ganho.toFixed(2)}</span>
+                <span style="color: #dc3545;">- R$ ${d.gasto.toFixed(2)}</span>
+            `;
+            lista.appendChild(div);
+        });
+        saldoTxt.innerText = `R$ ${totalLucro.toFixed(2)}`;
+    } catch (e) { console.error(e); }
+}
+
+// --- LÓGICA DE KM RODADOS ---
 async function carregarHistorico() {
-    const painelPrincipal = document.getElementById("painel-principal");
-    const abaHistorico = document.getElementById("aba-historico");
+    resetarTelas();
+    document.getElementById("aba-historico").style.display = "block";
     const lista = document.getElementById("lista-historico");
     const totalElemento = document.getElementById("total-km");
-    const menuLateral = document.getElementById("menu-lateral");
-
-    // Alterna telas
-    painelPrincipal.style.display = "none";
-    abaHistorico.style.display = "block";
-    menuLateral.classList.remove("aberto");
 
     if (!usuarioLogado) return;
 
     try {
-        const q = query(
-            collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"),
-            orderBy("data", "desc")
-        );
-
+        const q = query(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), orderBy("data", "desc"));
         const querySnapshot = await getDocs(q);
         lista.innerHTML = "";
         let somaKm = 0;
@@ -88,35 +125,21 @@ async function carregarHistorico() {
         querySnapshot.forEach((doc) => {
             const rota = doc.data();
             somaKm += parseFloat(rota.distancia);
-
-            // Formata a data do Firebase
             const dataFormatada = rota.data.toDate().toLocaleDateString('pt-BR');
-            
             const div = document.createElement("div");
             div.className = "item-rota";
             div.innerHTML = `
                 <small>📅 ${dataFormatada}</small>
                 <p><strong>🏁 ${rota.distancia} KM</strong></p>
-                <p style="font-size: 12px; color: #555;">📍 De: ${rota.origem.substring(0, 35)}...</p>
-                <p style="font-size: 12px; color: #555;">🏁 Para: ${rota.destino.substring(0, 35)}...</p>
+                <p style="font-size: 12px; color: #555;">📍 De: ${rota.origem.substring(0, 30)}...</p>
             `;
             lista.appendChild(div);
         });
-
         totalElemento.innerText = `${somaKm.toFixed(2)} KM`;
-
-    } catch (e) {
-        console.error("Erro ao carregar histórico:", e);
-        lista.innerHTML = "<p style='text-align:center;'>Erro ao carregar dados.</p>";
-    }
+    } catch (e) { console.error(e); }
 }
 
-// Torna global para o botão "Voltar" do HTML
-window.voltarParaMapa = () => {
-    document.getElementById("aba-historico").style.display = "none";
-    document.getElementById("painel-principal").style.display = "block";
-};
-
+// --- EVENTOS DE INTERFACE ---
 document.addEventListener("DOMContentLoaded", function() {
     const btnMenu = document.getElementById("btn-menu");
     const btnFecharMenu = document.getElementById("btn-fechar-menu");
@@ -125,17 +148,14 @@ document.addEventListener("DOMContentLoaded", function() {
     const btnAddParada = document.getElementById("btn-add-parada");
     const containerParadas = document.getElementById("container-paradas");
     const btnSair = document.querySelector(".menu-item.sair");
-    
-    // Link "Minhas Rotas" no menu
-    const linkHistorico = document.querySelector('.menu-links a:nth-child(2)');
-    if (linkHistorico) {
-        linkHistorico.onclick = (e) => {
-            e.preventDefault();
-            carregarHistorico();
-        };
-    }
+    const btnSalvarFinanceiro = document.getElementById("btn-salvar-financeiro");
 
-    // Navegação do Menu
+    // Menu Lateral
+    const linkKM = document.querySelector('.menu-links a:nth-child(2)');
+    const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)');
+
+    if (linkKM) linkKM.onclick = (e) => { e.preventDefault(); carregarHistorico(); };
+    if (linkFinanceiro) linkFinanceiro.onclick = (e) => { e.preventDefault(); abrirFinanceiro(); };
     if (btnMenu) btnMenu.addEventListener("click", () => menuLateral.classList.add("aberto"));
     if (btnFecharMenu) btnFecharMenu.addEventListener("click", () => menuLateral.classList.remove("aberto"));
 
@@ -146,23 +166,41 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     }
 
+    // Salvar Financeiro
+    if (btnSalvarFinanceiro) {
+        btnSalvarFinanceiro.onclick = async () => {
+            const ganho = parseFloat(document.getElementById("ganho-valor").value) || 0;
+            const gasto = parseFloat(document.getElementById("gasto-valor").value) || 0;
+            if (ganho === 0 && gasto === 0) return alert("Insira valores!");
+            
+            try {
+                await addDoc(collection(db, "usuarios", usuarioLogado.uid, "financeiro"), {
+                    ganho, gasto, lucro: ganho - gasto, data: new Date()
+                });
+                alert("Corre salvo! 🚀");
+                document.getElementById("ganho-valor").value = "";
+                document.getElementById("gasto-valor").value = "";
+                carregarResumoFinanceiro();
+            } catch (e) { console.error(e); }
+        };
+    }
+
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 
     if (btnAddParada) {
         btnAddParada.onclick = function() {
             const div = document.createElement("div");
             div.className = "parada-grupo";
-            
             const input = document.createElement("input");
             input.type = "text";
             input.className = "input-parada";
-            input.placeholder = "Digite o endereço...";
+            input.placeholder = "Endereço...";
 
-            const idUnico = "foto-" + Date.now(); 
-            const labelCamera = document.createElement("label");
-            labelCamera.className = "btn-camera";
-            labelCamera.htmlFor = idUnico;
-            labelCamera.innerText = "📸";
+            const idUnico = "foto-" + Date.now();
+            const labelCam = document.createElement("label");
+            labelCam.className = "btn-camera";
+            labelCam.htmlFor = idUnico;
+            labelCam.innerText = "📸";
 
             const inputFoto = document.createElement("input");
             inputFoto.type = "file";
@@ -171,21 +209,12 @@ document.addEventListener("DOMContentLoaded", function() {
             inputFoto.capture = "environment";
             inputFoto.style.display = "none";
 
-            inputFoto.onchange = function(evento) {
-                const arquivo = evento.target.files[0];
-                if (arquivo) {
-                    input.value = "Lendo imagem... ⏳";
-                    Tesseract.recognize(arquivo, 'por').then(({ data: { text } }) => {
-                        const linhas = text.split('\n');
-                        let rua = "";
-                        const regra = /(rua|avenida|av\.|travessa|praça|rodovia)/i;
-                        for (let l of linhas) {
-                            if (regra.test(l) && /\d/.test(l)) {
-                                rua = l.replace(/[|_[\]{}<>]/g, '').trim();
-                                break;
-                            }
-                        }
-                        input.value = rua || text.substring(0, 40);
+            inputFoto.onchange = (e) => {
+                const arq = e.target.files[0];
+                if (arq) {
+                    input.value = "Lendo... ⏳";
+                    Tesseract.recognize(arq, 'por').then(({ data: { text } }) => {
+                        input.value = text.substring(0, 45);
                         input.focus();
                     });
                 }
@@ -196,30 +225,22 @@ document.addEventListener("DOMContentLoaded", function() {
             btnRemover.className = "btn-remover-parada";
             btnRemover.onclick = () => containerParadas.removeChild(div);
 
-            div.appendChild(input);
-            div.appendChild(labelCamera);
-            div.appendChild(inputFoto);
-            div.appendChild(btnRemover);
+            div.append(input, labelCam, inputFoto, btnRemover);
             containerParadas.appendChild(div);
             configurarAutocomplete(input);
         };
     }
 });
 
+// --- ROTA E NAVEGAÇÃO ---
 async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
-    const inputsParadas = document.querySelectorAll(".input-parada");
-
-    if (!origem || !destino) {
-        alert("Preencha origem e destino!");
-        return;
-    }
+    const inputs = document.querySelectorAll(".input-parada");
+    if (!origem || !destino) return alert("Origem e Destino são obrigatórios!");
 
     let waypoints = [];
-    inputsParadas.forEach(input => {
-        if (input.value) waypoints.push({ location: input.value, stopover: true });
-    });
+    inputs.forEach(i => { if (i.value) waypoints.push({ location: i.value, stopover: true }); });
 
     const request = {
         origin: origem,
@@ -229,25 +250,16 @@ async function calcularRotaOtimizada() {
         travelMode: google.maps.TravelMode.DRIVING
     };
 
-    directionsService.route(request, async function(result, status) {
-        if (status === google.maps.DirectionsStatus.OK) {
+    directionsService.route(request, async (result, status) => {
+        if (status === "OK") {
             directionsRenderer.setDirections(result);
-            
-            const distanciaTotal = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
-            const distanciaKm = (distanciaTotal / 1000).toFixed(2);
+            const dist = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
+            const km = (dist / 1000).toFixed(2);
 
             if (usuarioLogado) {
-                try {
-                    await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), {
-                        distancia: distanciaKm,
-                        data: new Date(),
-                        origem: origem,
-                        destino: destino
-                    });
-                    console.log("KM salvo!");
-                } catch (erro) {
-                    console.error("Erro ao salvar:", erro);
-                }
+                await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), {
+                    distancia: km, data: new Date(), origem, destino
+                });
             }
             gerarBotoesDeNavegacao(result);
         }
@@ -256,28 +268,17 @@ async function calcularRotaOtimizada() {
 
 function gerarBotoesDeNavegacao(result) {
     const divLista = document.getElementById("lista-paradas");
-    if (!divLista) return;
-    
-    divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>"; 
-    
+    divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>";
     result.routes[0].legs.forEach((leg, i) => {
-        const container = document.createElement("div");
-        container.className = "container-navegacao";
-
         const btn = document.createElement("a");
         btn.className = "btn-navegar";
         btn.innerText = `Navegar para Parada ${i+1} 🚗`;
         btn.href = `geo:0,0?q=${encodeURIComponent(leg.end_address)}`;
-        
-        // --- A MÁGICA DO CHECK AQUI ---
         btn.onclick = function() {
-            // Marca como visitado adicionando uma classe CSS
             this.classList.add("visitado");
             this.innerText = `✅ Parada ${i+1} Finalizada`;
         };
-
-        container.appendChild(btn);
-        divLista.appendChild(container);
+        divLista.appendChild(btn);
     });
 }
 
@@ -285,12 +286,8 @@ function gerarBotoesDeNavegacao(result) {
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     const banner = document.createElement('div');
-    banner.id = "banner-instalacao";
     banner.style = "background: #000; color: #fff; padding: 15px; text-align: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 999; cursor: pointer; border-bottom: 2px solid #007bff; font-weight: bold;";
-    banner.innerText = "📲 Toque aqui para instalar o Roturbo no seu celular!";
+    banner.innerText = "📲 Instalar Roturbo";
     document.body.appendChild(banner);
-    banner.onclick = () => {
-        banner.remove();
-        e.prompt();
-    };
+    banner.onclick = () => { banner.remove(); e.prompt(); };
 });
