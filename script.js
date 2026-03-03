@@ -94,7 +94,7 @@ async function carregarResumoFinanceiro() {
         
         let somaGanhos = 0;
         let somaGastos = 0;
-        lista.innerHTML = "<h4>Histórico de Lançamentos:</h4>";
+        lista.innerHTML = "<h4>Histórico Recente:</h4>";
 
         snap.forEach(doc => {
             const d = doc.data();
@@ -103,19 +103,18 @@ async function carregarResumoFinanceiro() {
 
             const div = document.createElement("div");
             div.className = "item-financeiro";
-            div.style = "display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; font-size: 14px;";
+            div.style = "display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; background: #fff;";
             
-            // Ícone por categoria
             const icones = { combustivel: "⛽", alimentacao: "🍔", manutencao: "🛠️", outros: "📦" };
             const categoriaIcone = icones[d.categoria] || "💰";
 
             div.innerHTML = `
                 <div>
                     <small>${d.data.toDate().toLocaleDateString()}</small><br>
-                    <span>${categoriaIcone} ${d.categoria.toUpperCase()}</span>
+                    <span style="font-size: 12px; background: #eee; padding: 2px 5px; border-radius: 4px;">${categoriaIcone} ${d.categoria.toUpperCase()}</span>
                 </div>
                 <div style="text-align: right;">
-                    <span style="color: #28a745;">+ R$ ${d.ganho.toFixed(2)}</span><br>
+                    <span style="color: #28a745; font-weight: bold;">+ R$ ${d.ganho.toFixed(2)}</span><br>
                     <span style="color: #dc3545;">- R$ ${d.gasto.toFixed(2)}</span>
                 </div>
             `;
@@ -160,6 +159,52 @@ async function carregarHistorico() {
     } catch (e) { console.error(e); }
 }
 
+// --- FUNÇÃO PARA CRIAR PARADAS DINAMICAMENTE ---
+function criarNovaParada(valorPredefinido = "") {
+    const containerParadas = document.getElementById("container-paradas");
+    const div = document.createElement("div");
+    div.className = "parada-grupo";
+    
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "input-parada";
+    input.placeholder = "Endereço...";
+    input.value = valorPredefinido;
+
+    const idUnico = "foto-" + Date.now() + Math.random();
+    const labelCam = document.createElement("label");
+    labelCam.className = "btn-camera";
+    labelCam.htmlFor = idUnico;
+    labelCam.innerText = "📸";
+
+    const inputFoto = document.createElement("input");
+    inputFoto.type = "file";
+    inputFoto.id = idUnico;
+    inputFoto.accept = "image/*";
+    inputFoto.capture = "environment";
+    inputFoto.style.display = "none";
+
+    inputFoto.onchange = (e) => {
+        const arq = e.target.files[0];
+        if (arq) {
+            input.value = "Lendo... ⏳";
+            Tesseract.recognize(arq, 'por').then(({ data: { text } }) => {
+                input.value = text.substring(0, 45);
+                input.focus();
+            });
+        }
+    };
+
+    const btnRemover = document.createElement("button");
+    btnRemover.innerText = "×";
+    btnRemover.className = "btn-remover-parada";
+    btnRemover.onclick = () => containerParadas.removeChild(div);
+
+    div.append(input, labelCam, inputFoto, btnRemover);
+    containerParadas.appendChild(div);
+    configurarAutocomplete(input);
+}
+
 // --- EVENTOS DE INTERFACE ---
 document.addEventListener("DOMContentLoaded", function() {
     const btnMenu = document.getElementById("btn-menu");
@@ -167,7 +212,10 @@ document.addEventListener("DOMContentLoaded", function() {
     const menuLateral = document.getElementById("menu-lateral");
     const btnCalcular = document.getElementById("btn-calcular");
     const btnAddParada = document.getElementById("btn-add-parada");
-    const containerParadas = document.getElementById("container-paradas");
+    const btnAddVarias = document.getElementById("btn-add-varias");
+    const boxVarias = document.getElementById("box-varias-paradas");
+    const btnConfirmarVarias = document.getElementById("btn-confirmar-varias");
+    const campoLista = document.getElementById("lista-enderecos-colados");
     const btnSair = document.querySelector(".menu-item.sair");
     const btnSalvarFinanceiro = document.getElementById("btn-salvar-financeiro");
 
@@ -186,6 +234,25 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     }
 
+    // Lógica para Várias Paradas
+    if (btnAddVarias) {
+        btnAddVarias.onclick = () => {
+            boxVarias.style.display = boxVarias.style.display === "none" ? "block" : "none";
+        };
+    }
+
+    if (btnConfirmarVarias) {
+        btnConfirmarVarias.onclick = () => {
+            const texto = campoLista.value.trim();
+            if (!texto) return alert("Cole ao menos um endereço!");
+            const linhas = texto.split('\n');
+            linhas.forEach(end => { if (end.trim()) criarNovaParada(end.trim()); });
+            campoLista.value = "";
+            boxVarias.style.display = "none";
+        };
+    }
+
+    // Salvar Financeiro (Upgrade Profissional)
     if (btnSalvarFinanceiro) {
         btnSalvarFinanceiro.onclick = async () => {
             const ganho = parseFloat(document.getElementById("ganho-valor").value) || 0;
@@ -206,51 +273,8 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     }
 
+    if (btnAddParada) btnAddParada.onclick = () => criarNovaParada();
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
-
-    if (btnAddParada) {
-        btnAddParada.onclick = function() {
-            const div = document.createElement("div");
-            div.className = "parada-grupo";
-            const input = document.createElement("input");
-            input.type = "text";
-            input.className = "input-parada";
-            input.placeholder = "Endereço...";
-
-            const idUnico = "foto-" + Date.now();
-            const labelCam = document.createElement("label");
-            labelCam.className = "btn-camera";
-            labelCam.htmlFor = idUnico;
-            labelCam.innerText = "📸";
-
-            const inputFoto = document.createElement("input");
-            inputFoto.type = "file";
-            inputFoto.id = idUnico;
-            inputFoto.accept = "image/*";
-            inputFoto.capture = "environment";
-            inputFoto.style.display = "none";
-
-            inputFoto.onchange = (e) => {
-                const arq = e.target.files[0];
-                if (arq) {
-                    input.value = "Lendo... ⏳";
-                    Tesseract.recognize(arq, 'por').then(({ data: { text } }) => {
-                        input.value = text.substring(0, 45);
-                        input.focus();
-                    });
-                }
-            };
-
-            const btnRemover = document.createElement("button");
-            btnRemover.innerText = "×";
-            btnRemover.className = "btn-remover-parada";
-            btnRemover.onclick = () => containerParadas.removeChild(div);
-
-            div.append(input, labelCam, inputFoto, btnRemover);
-            containerParadas.appendChild(div);
-            configurarAutocomplete(input);
-        };
-    }
 });
 
 // --- ROTA E NAVEGAÇÃO ---
