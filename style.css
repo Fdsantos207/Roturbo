@@ -430,3 +430,9 @@ button:hover {
 
 .btn-confirmar { background: #28a745; color: white; border: none; padding: 15px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; }
 .btn-voltar { margin-top: 20px; background: #6c757d; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; }
+
+.btn-acao { border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; margin-right: 5px; margin-bottom: 5px; }
+        .btn-acao.btn-pro { background: #ffc107; color: #000; }
+        .btn-acao.btn-bloquear { background: #fd7e14; } /* Laranja para Bloquear */
+        .btn-acao.btn-desbloquear { background: #28a745; }
+        .btn-acao.btn-excluir { background: #dc3545; } /* Vermelho para Excluir */

@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBceowtEvmh9YJTLpeGR2rYnOSjmXRjH_U",
@@ -59,7 +59,7 @@ async function carregarUsuarios() {
 
             const tr = document.createElement("tr");
 
-            // Define os botões dependendo do status do usuário
+            // Botões de Ação
             const btnPlano = plano === "pro" 
                 ? `<button class="btn-acao" style="background:#6c757d;" onclick="alterarUsuario('${uid}', 'plano', 'gratis')">Tirar PRO</button>` 
                 : `<button class="btn-acao btn-pro" onclick="alterarUsuario('${uid}', 'plano', 'pro')">Dar PRO</button>`;
@@ -67,6 +67,9 @@ async function carregarUsuarios() {
             const btnStatus = status === "bloqueado"
                 ? `<button class="btn-acao btn-desbloquear" onclick="alterarUsuario('${uid}', 'status', 'ativo')">Desbloquear</button>`
                 : `<button class="btn-acao btn-bloquear" onclick="alterarUsuario('${uid}', 'status', 'bloqueado')">Bloquear</button>`;
+
+            // Novo botão de excluir
+            const btnExcluir = `<button class="btn-acao btn-excluir" onclick="excluirUsuario('${uid}', '${user.nome || 'este usuário'}')">🗑️ Excluir</button>`;
 
             tr.innerHTML = `
                 <td><strong>${user.nome || "Sem Nome"}</strong></td>
@@ -76,23 +79,24 @@ async function carregarUsuarios() {
                 <td>
                     ${btnPlano}
                     ${btnStatus}
+                    ${btnExcluir}
                 </td>
             `;
             tabelaCorpo.appendChild(tr);
         });
 
-        // Atualiza os cards lá no topo
+        // Atualiza os cards numéricos
         document.getElementById("adm-total-usuarios").innerText = totalUsers;
         document.getElementById("adm-total-pro").innerText = totalPro;
         document.getElementById("adm-total-bloqueados").innerText = totalBloqueados;
 
     } catch (erro) {
         console.error("Erro ao carregar usuários:", erro);
-        tabelaCorpo.innerHTML = `<tr><td colspan="5">Erro ao carregar dados. Verifique as permissões do Firebase.</td></tr>`;
+        tabelaCorpo.innerHTML = `<tr><td colspan="5">Erro ao carregar dados. Verifique o console.</td></tr>`;
     }
 }
 
-// Função global para os botões da tabela funcionarem
+// Função para Bloquear / Dar PRO
 window.alterarUsuario = async (uid, campo, novoValor) => {
     const confirmacao = confirm(`Tem certeza que deseja alterar o ${campo} para ${novoValor}?`);
     if (!confirmacao) return;
@@ -102,10 +106,26 @@ window.alterarUsuario = async (uid, campo, novoValor) => {
         await updateDoc(userRef, {
             [campo]: novoValor
         });
-        alert(`Atualizado com sucesso!`);
-        carregarUsuarios(); // Recarrega a tabela para mostrar a mudança
+        carregarUsuarios();
     } catch (erro) {
         console.error("Erro ao atualizar:", erro);
         alert("Erro ao atualizar o usuário.");
+    }
+};
+
+// --- NOVA FUNÇÃO: EXCLUIR USUÁRIO ---
+window.excluirUsuario = async (uid, nome) => {
+    // Confirmação dupla para evitar acidentes
+    const confirmacao = confirm(`⚠️ ATENÇÃO: Tem certeza que deseja EXCLUIR DEFINITIVAMENTE os dados do motorista ${nome}? Esta ação apagará o histórico dele e não pode ser desfeita.`);
+    if (!confirmacao) return;
+
+    try {
+        const userRef = doc(db, "usuarios", uid);
+        await deleteDoc(userRef); // Comando que apaga o documento do Firestore
+        alert(`O usuário ${nome} foi excluído com sucesso do banco de dados!`);
+        carregarUsuarios(); // Recarrega a tabela na mesma hora
+    } catch (erro) {
+        console.error("Erro ao excluir:", erro);
+        alert("Erro ao excluir o usuário. Verifique as permissões do Firebase.");
     }
 };
