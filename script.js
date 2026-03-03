@@ -257,13 +257,27 @@ async function calcularRotaOtimizada() {
 function gerarBotoesDeNavegacao(result) {
     const divLista = document.getElementById("lista-paradas");
     if (!divLista) return;
+    
     divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>"; 
+    
     result.routes[0].legs.forEach((leg, i) => {
+        const container = document.createElement("div");
+        container.className = "container-navegacao";
+
         const btn = document.createElement("a");
         btn.className = "btn-navegar";
         btn.innerText = `Navegar para Parada ${i+1} 🚗`;
         btn.href = `geo:0,0?q=${encodeURIComponent(leg.end_address)}`;
-        divLista.appendChild(btn);
+        
+        // --- A MÁGICA DO CHECK AQUI ---
+        btn.onclick = function() {
+            // Marca como visitado adicionando uma classe CSS
+            this.classList.add("visitado");
+            this.innerText = `✅ Parada ${i+1} Finalizada`;
+        };
+
+        container.appendChild(btn);
+        divLista.appendChild(container);
     });
 }
 

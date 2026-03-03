@@ -345,3 +345,25 @@ button:hover {
 
 .item-rota small { color: #666; display: block; margin-bottom: 5px; }
 .item-rota p { margin: 2px 0; font-size: 14px; }
+
+/* Botão normal (que você já tem) */
+.btn-navegar {
+    display: block;
+    background-color: #28a745; /* Verde */
+    color: white;
+    padding: 15px;
+    margin: 10px 0;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+/* ESTILO PARA O BOTÃO FINALIZADO (CHECK) */
+.btn-navegar.visitado {
+    background-color: #6c757d !important; /* Cinza escuro */
+    opacity: 0.5; /* Fica meio "apagado" */
+    text-decoration: line-through; /* Risca o texto */
+    pointer-events: none; /* Opcional: impede clicar de novo se quiser */
+}
