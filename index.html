@@ -49,17 +49,7 @@
 
         <label>Paradas:</label>
         <div id="container-paradas"></div>
-        
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button id="btn-add-parada" type="button" style="flex: 1;">+ Uma Parada</button>
-            <button id="btn-add-varias" type="button" style="flex: 1; background-color: #17a2b8;">+ Várias Paradas</button>
-        </div>
-
-        <div id="box-varias-paradas" style="display: none; background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ccc;">
-            <label style="color: #333; font-weight: bold;">Cole sua lista (um por linha):</label>
-            <textarea id="lista-enderecos-colados" rows="5" style="width: 100%; margin-top: 8px; border-radius: 5px; padding: 10px; border: 1px solid #bbb;" placeholder="Rua Exemplo, 100&#10;Av. Paulista, 1000"></textarea>
-            <button id="btn-confirmar-varias" style="width: 100%; margin-top: 10px; background: #28a745; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold;">✅ Adicionar Lista</button>
-        </div>
+        <button id="btn-add-parada" type="button">+ Adicionar Parada</button>
 
         <label>Destino Final:</label>
         <input type="text" id="destino" placeholder="Digite o destino...">
@@ -106,10 +96,23 @@
 
         <div class="formulario-financeiro">
             <h4>➕ Novo Lançamento</h4>
-            <label>Ganho da Rota (R$):</label>
-            <input type="number" id="ganho-valor" placeholder="0.00" step="0.01">
             
-            <label>Categoria do Gasto:</label>
+            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button type="button" id="btn-financeiro-unico" style="flex: 1; font-size: 12px; background: #007bff; color: white; border: none; padding: 8px; border-radius: 5px;">Único</button>
+                <button type="button" id="btn-financeiro-varios" style="flex: 1; font-size: 12px; background: #17a2b8; color: white; border: none; padding: 8px; border-radius: 5px;">Vários (Lista)</button>
+            </div>
+
+            <div id="financeiro-input-unico">
+                <label>Ganho da Rota (R$):</label>
+                <input type="number" id="ganho-valor" placeholder="0.00" step="0.01">
+            </div>
+
+            <div id="financeiro-input-varios" style="display: none;">
+                <label>Cole os ganhos (um por linha):</label>
+                <textarea id="lista-ganhos-colados" rows="4" style="width: 100%; margin-top: 5px; padding: 10px; border-radius: 5px; border: 1px solid #ccc;" placeholder="5.50&#10;12.00&#10;8.90"></textarea>
+            </div>
+            
+            <label style="margin-top: 10px; display: block;">Categoria do Gasto:</label>
             <select id="categoria-gasto" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
                 <option value="combustivel">⛽ Combustível</option>
                 <option value="alimentacao">🍔 Alimentação</option>
@@ -117,7 +120,7 @@
                 <option value="outros">📦 Outros</option>
             </select>
 
-            <label>Valor do Gasto (R$):</label>
+            <label>Valor Total do Gasto (R$):</label>
             <input type="number" id="gasto-valor" placeholder="0.00" step="0.01">
             
             <button id="btn-salvar-financeiro" style="background: #28a745; margin-top: 10px; width: 100%; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold;">✅ Salvar no Caixa</button>

@@ -94,7 +94,7 @@ async function carregarResumoFinanceiro() {
         
         let somaGanhos = 0;
         let somaGastos = 0;
-        lista.innerHTML = "<h4>Histórico Recente:</h4>";
+        lista.innerHTML = "<h4>Histórico de Lançamentos:</h4>";
 
         snap.forEach(doc => {
             const d = doc.data();
@@ -159,19 +159,17 @@ async function carregarHistorico() {
     } catch (e) { console.error(e); }
 }
 
-// --- FUNÇÃO PARA CRIAR PARADAS DINAMICAMENTE ---
-function criarNovaParada(valorPredefinido = "") {
+// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA (ÚNICA) ---
+function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const div = document.createElement("div");
     div.className = "parada-grupo";
-    
     const input = document.createElement("input");
     input.type = "text";
     input.className = "input-parada";
     input.placeholder = "Endereço...";
-    input.value = valorPredefinido;
 
-    const idUnico = "foto-" + Date.now() + Math.random();
+    const idUnico = "foto-" + Date.now();
     const labelCam = document.createElement("label");
     labelCam.className = "btn-camera";
     labelCam.htmlFor = idUnico;
@@ -212,18 +210,25 @@ document.addEventListener("DOMContentLoaded", function() {
     const menuLateral = document.getElementById("menu-lateral");
     const btnCalcular = document.getElementById("btn-calcular");
     const btnAddParada = document.getElementById("btn-add-parada");
-    const btnAddVarias = document.getElementById("btn-add-varias");
-    const boxVarias = document.getElementById("box-varias-paradas");
-    const btnConfirmarVarias = document.getElementById("btn-confirmar-varias");
-    const campoLista = document.getElementById("lista-enderecos-colados");
     const btnSair = document.querySelector(".menu-item.sair");
     const btnSalvarFinanceiro = document.getElementById("btn-salvar-financeiro");
+
+    // Seletores da nova lógica Financeira
+    const btnUnico = document.getElementById("btn-financeiro-unico");
+    const btnVarios = document.getElementById("btn-financeiro-varios");
+    const divUnico = document.getElementById("financeiro-input-unico");
+    const divVarios = document.getElementById("financeiro-input-varios");
 
     const linkKM = document.querySelector('.menu-links a:nth-child(2)');
     const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)');
 
+    // Alternar modos no Financeiro
+    if (btnUnico) btnUnico.onclick = () => { divUnico.style.display = "block"; divVarios.style.display = "none"; };
+    if (btnVarios) btnVarios.onclick = () => { divUnico.style.display = "none"; divVarios.style.display = "block"; };
+
     if (linkKM) linkKM.onclick = (e) => { e.preventDefault(); carregarHistorico(); };
     if (linkFinanceiro) linkFinanceiro.onclick = (e) => { e.preventDefault(); abrirFinanceiro(); };
+    
     if (btnMenu) btnMenu.addEventListener("click", () => menuLateral.classList.add("aberto"));
     if (btnFecharMenu) btnFecharMenu.addEventListener("click", () => menuLateral.classList.remove("aberto"));
 
@@ -234,40 +239,37 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     }
 
-    // Lógica para Várias Paradas
-    if (btnAddVarias) {
-        btnAddVarias.onclick = () => {
-            boxVarias.style.display = boxVarias.style.display === "none" ? "block" : "none";
-        };
-    }
-
-    if (btnConfirmarVarias) {
-        btnConfirmarVarias.onclick = () => {
-            const texto = campoLista.value.trim();
-            if (!texto) return alert("Cole ao menos um endereço!");
-            const linhas = texto.split('\n');
-            linhas.forEach(end => { if (end.trim()) criarNovaParada(end.trim()); });
-            campoLista.value = "";
-            boxVarias.style.display = "none";
-        };
-    }
-
-    // Salvar Financeiro (Upgrade Profissional)
+    // Lógica para Salvar Financeiro (Soma automática da lista)
     if (btnSalvarFinanceiro) {
         btnSalvarFinanceiro.onclick = async () => {
-            const ganho = parseFloat(document.getElementById("ganho-valor").value) || 0;
             const gasto = parseFloat(document.getElementById("gasto-valor").value) || 0;
             const categoria = document.getElementById("categoria-gasto").value;
+            let totalGanhoLancado = 0;
 
-            if (ganho === 0 && gasto === 0) return alert("Insira valores!");
+            if (divVarios.style.display === "block") {
+                const texto = document.getElementById("lista-ganhos-colados").value.trim();
+                if (texto) {
+                    const listaGanhos = texto.split('\n').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+                    totalGanhoLancado = listaGanhos.reduce((a, b) => a + b, 0);
+                }
+            } else {
+                totalGanhoLancado = parseFloat(document.getElementById("ganho-valor").value) || 0;
+            }
+
+            if (totalGanhoLancado === 0 && gasto === 0) return alert("Insira algum valor!");
             
             try {
                 await addDoc(collection(db, "usuarios", usuarioLogado.uid, "financeiro"), {
-                    ganho, gasto, categoria, lucro: ganho - gasto, data: new Date()
+                    ganho: totalGanhoLancado, 
+                    gasto: gasto, 
+                    categoria: categoria, 
+                    lucro: totalGanhoLancado - gasto, 
+                    data: new Date()
                 });
                 alert("Corre salvo com sucesso! 🚀");
                 document.getElementById("ganho-valor").value = "";
                 document.getElementById("gasto-valor").value = "";
+                document.getElementById("lista-ganhos-colados").value = "";
                 carregarResumoFinanceiro();
             } catch (e) { console.error(e); }
         };
@@ -277,7 +279,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 });
 
-// --- ROTA E NAVEGAÇÃO ---
+// --- ROTA E NAVEGAÇÃO (MANTIDA ORIGINAL) ---
 async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
