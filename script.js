@@ -73,7 +73,7 @@ window.voltarParaMapa = () => {
     document.getElementById("painel-principal").style.display = "block";
 };
 
-// --- LOGICA FINANCEIRA (MEU CORRE) ---
+// --- LOGICA FINANCEIRA PROFISSIONAL (MEU CORRE) ---
 async function abrirFinanceiro() {
     resetarTelas();
     document.getElementById("aba-financeiro").style.display = "block";
@@ -83,27 +83,48 @@ async function abrirFinanceiro() {
 async function carregarResumoFinanceiro() {
     const lista = document.getElementById("lista-financeiro");
     const saldoTxt = document.getElementById("saldo-dia");
+    const ganhosTxt = document.getElementById("total-ganhos");
+    const gastosTxt = document.getElementById("total-gastos");
+
     if (!usuarioLogado) return;
 
     try {
         const q = query(collection(db, "usuarios", usuarioLogado.uid, "financeiro"), orderBy("data", "desc"));
         const snap = await getDocs(q);
-        let totalLucro = 0;
-        lista.innerHTML = "<h4>Últimos Lançamentos:</h4>";
+        
+        let somaGanhos = 0;
+        let somaGastos = 0;
+        lista.innerHTML = "<h4>Histórico de Lançamentos:</h4>";
 
         snap.forEach(doc => {
             const d = doc.data();
-            totalLucro += d.lucro;
+            somaGanhos += d.ganho;
+            somaGastos += d.gasto;
+
             const div = document.createElement("div");
             div.className = "item-financeiro";
+            div.style = "display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; font-size: 14px;";
+            
+            // Ícone por categoria
+            const icones = { combustivel: "⛽", alimentacao: "🍔", manutencao: "🛠️", outros: "📦" };
+            const categoriaIcone = icones[d.categoria] || "💰";
+
             div.innerHTML = `
-                <span>📅 ${d.data.toDate().toLocaleDateString()}</span>
-                <span style="color: #28a745;">+ R$ ${d.ganho.toFixed(2)}</span>
-                <span style="color: #dc3545;">- R$ ${d.gasto.toFixed(2)}</span>
+                <div>
+                    <small>${d.data.toDate().toLocaleDateString()}</small><br>
+                    <span>${categoriaIcone} ${d.categoria.toUpperCase()}</span>
+                </div>
+                <div style="text-align: right;">
+                    <span style="color: #28a745;">+ R$ ${d.ganho.toFixed(2)}</span><br>
+                    <span style="color: #dc3545;">- R$ ${d.gasto.toFixed(2)}</span>
+                </div>
             `;
             lista.appendChild(div);
         });
-        saldoTxt.innerText = `R$ ${totalLucro.toFixed(2)}`;
+
+        ganhosTxt.innerText = `R$ ${somaGanhos.toFixed(2)}`;
+        gastosTxt.innerText = `R$ ${somaGastos.toFixed(2)}`;
+        saldoTxt.innerText = `R$ ${(somaGanhos - somaGastos).toFixed(2)}`;
     } catch (e) { console.error(e); }
 }
 
@@ -150,7 +171,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const btnSair = document.querySelector(".menu-item.sair");
     const btnSalvarFinanceiro = document.getElementById("btn-salvar-financeiro");
 
-    // Menu Lateral
     const linkKM = document.querySelector('.menu-links a:nth-child(2)');
     const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)');
 
@@ -166,18 +186,19 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     }
 
-    // Salvar Financeiro
     if (btnSalvarFinanceiro) {
         btnSalvarFinanceiro.onclick = async () => {
             const ganho = parseFloat(document.getElementById("ganho-valor").value) || 0;
             const gasto = parseFloat(document.getElementById("gasto-valor").value) || 0;
+            const categoria = document.getElementById("categoria-gasto").value;
+
             if (ganho === 0 && gasto === 0) return alert("Insira valores!");
             
             try {
                 await addDoc(collection(db, "usuarios", usuarioLogado.uid, "financeiro"), {
-                    ganho, gasto, lucro: ganho - gasto, data: new Date()
+                    ganho, gasto, categoria, lucro: ganho - gasto, data: new Date()
                 });
-                alert("Corre salvo! 🚀");
+                alert("Corre salvo com sucesso! 🚀");
                 document.getElementById("ganho-valor").value = "";
                 document.getElementById("gasto-valor").value = "";
                 carregarResumoFinanceiro();
