@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBceowtEvmh9YJTLpeGR2rYnOSjmXRjH_U",
@@ -36,7 +36,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- FUNÇÃO DO MAPA (Tornada Global para o Callback do Google) ---
+// --- FUNÇÃO DO MAPA ---
 window.iniciarMapa = function() {
     const centroInicial = { lat: -23.55052, lng: -46.633309 };
     mapa = new google.maps.Map(document.getElementById("mapa"), {
@@ -60,7 +60,63 @@ function configurarAutocomplete(inputElement) {
     });
 }
 
-// --- LOGICA DE INTERFACE (MENU E BOTÕES) ---
+// --- LÓGICA DE INTERFACE E HISTÓRICO ---
+async function carregarHistorico() {
+    const painelPrincipal = document.getElementById("painel-principal");
+    const abaHistorico = document.getElementById("aba-historico");
+    const lista = document.getElementById("lista-historico");
+    const totalElemento = document.getElementById("total-km");
+    const menuLateral = document.getElementById("menu-lateral");
+
+    // Alterna telas
+    painelPrincipal.style.display = "none";
+    abaHistorico.style.display = "block";
+    menuLateral.classList.remove("aberto");
+
+    if (!usuarioLogado) return;
+
+    try {
+        const q = query(
+            collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"),
+            orderBy("data", "desc")
+        );
+
+        const querySnapshot = await getDocs(q);
+        lista.innerHTML = "";
+        let somaKm = 0;
+
+        querySnapshot.forEach((doc) => {
+            const rota = doc.data();
+            somaKm += parseFloat(rota.distancia);
+
+            // Formata a data do Firebase
+            const dataFormatada = rota.data.toDate().toLocaleDateString('pt-BR');
+            
+            const div = document.createElement("div");
+            div.className = "item-rota";
+            div.innerHTML = `
+                <small>📅 ${dataFormatada}</small>
+                <p><strong>🏁 ${rota.distancia} KM</strong></p>
+                <p style="font-size: 12px; color: #555;">📍 De: ${rota.origem.substring(0, 35)}...</p>
+                <p style="font-size: 12px; color: #555;">🏁 Para: ${rota.destino.substring(0, 35)}...</p>
+            `;
+            lista.appendChild(div);
+        });
+
+        totalElemento.innerText = `${somaKm.toFixed(2)} KM`;
+
+    } catch (e) {
+        console.error("Erro ao carregar histórico:", e);
+        lista.innerHTML = "<p style='text-align:center;'>Erro ao carregar dados.</p>";
+    }
+}
+
+// Torna global para o botão "Voltar" do HTML
+window.voltarParaMapa = () => {
+    document.getElementById("aba-historico").style.display = "none";
+    document.getElementById("painel-principal").style.display = "block";
+};
+
 document.addEventListener("DOMContentLoaded", function() {
     const btnMenu = document.getElementById("btn-menu");
     const btnFecharMenu = document.getElementById("btn-fechar-menu");
@@ -69,16 +125,20 @@ document.addEventListener("DOMContentLoaded", function() {
     const btnAddParada = document.getElementById("btn-add-parada");
     const containerParadas = document.getElementById("container-paradas");
     const btnSair = document.querySelector(".menu-item.sair");
-
-    // Abrir/Fechar Menu
-    if (btnMenu && menuLateral) {
-        btnMenu.onclick = () => menuLateral.classList.add("aberto");
+    
+    // Link "Minhas Rotas" no menu
+    const linkHistorico = document.querySelector('.menu-links a:nth-child(2)');
+    if (linkHistorico) {
+        linkHistorico.onclick = (e) => {
+            e.preventDefault();
+            carregarHistorico();
+        };
     }
-    if (btnFecharMenu && menuLateral) {
-        btnFecharMenu.onclick = () => menuLateral.classList.remove("aberto");
-    }
 
-    // Botão Sair
+    // Navegação do Menu
+    if (btnMenu) btnMenu.addEventListener("click", () => menuLateral.classList.add("aberto"));
+    if (btnFecharMenu) btnFecharMenu.addEventListener("click", () => menuLateral.classList.remove("aberto"));
+
     if (btnSair) {
         btnSair.onclick = (e) => {
             e.preventDefault();
@@ -86,12 +146,8 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     }
 
-    // Botão Calcular
-    if (btnCalcular) {
-        btnCalcular.onclick = calcularRotaOtimizada;
-    }
+    if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 
-    // Adicionar Paradas
     if (btnAddParada) {
         btnAddParada.onclick = function() {
             const div = document.createElement("div");
@@ -135,11 +191,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             };
 
-            // Localize onde você cria o btnRemover e troque por:
-const btnRemover = document.createElement("button");
-btnRemover.innerText = "×"; // Use o símbolo de multiplicar que fica mais bonito
-btnRemover.className = "btn-remover-parada"; // Adiciona a classe que criamos no CSS
-btnRemover.onclick = () => containerParadas.removeChild(div);
+            const btnRemover = document.createElement("button");
+            btnRemover.innerText = "×";
+            btnRemover.className = "btn-remover-parada";
+            btnRemover.onclick = () => containerParadas.removeChild(div);
 
             div.appendChild(input);
             div.appendChild(labelCamera);
@@ -215,7 +270,6 @@ function gerarBotoesDeNavegacao(result) {
 // --- PWA ---
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
-    eventoInstalacao = e;
     const banner = document.createElement('div');
     banner.id = "banner-instalacao";
     banner.style = "background: #000; color: #fff; padding: 15px; text-align: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 999; cursor: pointer; border-bottom: 2px solid #007bff; font-weight: bold;";
