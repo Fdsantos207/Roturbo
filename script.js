@@ -241,4 +241,139 @@ function criarNovaParada() {
     btnRemover.onclick = () => containerParadas.removeChild(div);
 
     div.append(input, labelCam, inputFoto, btnRemover);
-    container
+    containerParadas.appendChild(div);
+    configurarAutocomplete(input);
+}
+
+// --- EVENTOS DE INTERFACE ---
+document.addEventListener("DOMContentLoaded", function() {
+    const btnMenu = document.getElementById("btn-menu");
+    const btnFecharMenu = document.getElementById("btn-fechar-menu");
+    const menuLateral = document.getElementById("menu-lateral");
+    const btnCalcular = document.getElementById("btn-calcular");
+    const btnAddParada = document.getElementById("btn-add-parada");
+    const btnSair = document.querySelector(".menu-item.sair");
+    const btnSalvarFinanceiro = document.getElementById("btn-salvar-financeiro");
+
+    const btnUnico = document.getElementById("btn-financeiro-unico");
+    const btnVarios = document.getElementById("btn-financeiro-varios");
+    const divUnico = document.getElementById("financeiro-input-unico");
+    const divVarios = document.getElementById("financeiro-input-varios");
+
+    const linkKM = document.querySelector('.menu-links a:nth-child(2)');
+    const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)');
+
+    if (btnUnico) btnUnico.onclick = () => { divUnico.style.display = "block"; divVarios.style.display = "none"; };
+    if (btnVarios) btnVarios.onclick = () => { divUnico.style.display = "none"; divVarios.style.display = "block"; };
+
+    if (linkKM) linkKM.onclick = (e) => { e.preventDefault(); carregarHistorico(); };
+    if (linkFinanceiro) linkFinanceiro.onclick = (e) => { e.preventDefault(); abrirFinanceiro(); };
+    
+    if (btnMenu) btnMenu.addEventListener("click", () => menuLateral.classList.add("aberto"));
+    if (btnFecharMenu) btnFecharMenu.addEventListener("click", () => menuLateral.classList.remove("aberto"));
+
+    if (btnSair) {
+        btnSair.onclick = (e) => {
+            e.preventDefault();
+            signOut(auth).then(() => window.location.href = "login.html");
+        };
+    }
+
+    if (btnSalvarFinanceiro) {
+        btnSalvarFinanceiro.onclick = async () => {
+            const gasto = parseFloat(document.getElementById("gasto-valor").value) || 0;
+            const categoria = document.getElementById("categoria-gasto").value;
+            let totalGanhoLancado = 0;
+
+            if (divVarios.style.display === "block") {
+                const texto = document.getElementById("lista-ganhos-colados").value.trim();
+                if (texto) {
+                    const listaGanhos = texto.split('\n').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+                    totalGanhoLancado = listaGanhos.reduce((a, b) => a + b, 0);
+                }
+            } else {
+                totalGanhoLancado = parseFloat(document.getElementById("ganho-valor").value) || 0;
+            }
+
+            if (totalGanhoLancado === 0 && gasto === 0) return alert("Insira algum valor!");
+            
+            try {
+                await addDoc(collection(db, "usuarios", usuarioLogado.uid, "financeiro"), {
+                    ganho: totalGanhoLancado, 
+                    gasto: gasto, 
+                    categoria: categoria, 
+                    lucro: totalGanhoLancado - gasto, 
+                    data: new Date()
+                });
+                alert("Corre salvo com sucesso! 🚀");
+                document.getElementById("ganho-valor").value = "";
+                document.getElementById("gasto-valor").value = "";
+                document.getElementById("lista-ganhos-colados").value = "";
+                carregarResumoFinanceiro();
+            } catch (e) { console.error(e); }
+        };
+    }
+
+    if (btnAddParada) btnAddParada.onclick = () => criarNovaParada();
+    if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
+});
+
+// --- ROTA E NAVEGAÇÃO (MANTIDA ORIGINAL) ---
+async function calcularRotaOtimizada() {
+    const origem = document.getElementById("origem").value;
+    const destino = document.getElementById("destino").value;
+    const inputs = document.querySelectorAll(".input-parada");
+    if (!origem || !destino) return alert("Origem e Destino são obrigatórios!");
+
+    let waypoints = [];
+    inputs.forEach(i => { if (i.value) waypoints.push({ location: i.value, stopover: true }); });
+
+    const request = {
+        origin: origem,
+        destination: destino,
+        waypoints: waypoints,
+        optimizeWaypoints: true,
+        travelMode: google.maps.TravelMode.DRIVING
+    };
+
+    directionsService.route(request, async (result, status) => {
+        if (status === "OK") {
+            directionsRenderer.setDirections(result);
+            const dist = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
+            const km = (dist / 1000).toFixed(2);
+
+            if (usuarioLogado) {
+                await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), {
+                    distancia: km, data: new Date(), origem, destino
+                });
+            }
+            gerarBotoesDeNavegacao(result);
+        }
+    });
+}
+
+function gerarBotoesDeNavegacao(result) {
+    const divLista = document.getElementById("lista-paradas");
+    divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>";
+    result.routes[0].legs.forEach((leg, i) => {
+        const btn = document.createElement("a");
+        btn.className = "btn-navegar";
+        btn.innerText = `Navegar para Parada ${i+1} 🚗`;
+        btn.href = `geo:0,0?q=${encodeURIComponent(leg.end_address)}`;
+        btn.onclick = function() {
+            this.classList.add("visitado");
+            this.innerText = `✅ Parada ${i+1} Finalizada`;
+        };
+        divLista.appendChild(btn);
+    });
+}
+
+// --- PWA ---
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    const banner = document.createElement('div');
+    banner.style = "background: #000; color: #fff; padding: 15px; text-align: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 999; cursor: pointer; border-bottom: 2px solid #007bff; font-weight: bold;";
+    banner.innerText = "📲 Instalar Roturbo";
+    document.body.appendChild(banner);
+    banner.onclick = () => { banner.remove(); e.prompt(); };
+});
