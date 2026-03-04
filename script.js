@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, addDoc, getDocs, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBceowtEvmh9YJTLpeGR2rYnOSjmXRjH_U",
@@ -29,22 +29,43 @@ onAuthStateChanged(auth, async (user) => {
         const docRef = doc(db, "usuarios", user.uid);
         const docSnap = await getDoc(docRef);
         
+        // Se a ficha existir no banco, puxa ela. Se não existir, cria uma vazia.
         if (docSnap.exists()) {
             dadosUsuario = docSnap.data(); 
-            
-            const pPerfil = document.querySelector(".menu-perfil p");
-            if (pPerfil) {
-                const planoTexto = dadosUsuario.plano === "pro" ? "⭐ Plano PRO" : "Plano Grátis";
-                const corPlano = dadosUsuario.plano === "pro" ? "#ffc107" : "#6c757d";
-                pPerfil.innerHTML = `Olá, ${dadosUsuario.nome || 'Motorista'}!<br><small style="color: ${corPlano}; font-weight: bold;">${planoTexto}</small>`;
-            }
+        } else {
+            dadosUsuario = { plano: "gratis", nome: "Motorista" };
+        }
 
-            if (dadosUsuario.plano !== "pro") {
-                const linkKM = document.querySelector('.menu-links a:nth-child(2)'); 
-                const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)'); 
-                if (linkKM && !linkKM.innerText.includes("🔒")) linkKM.innerText += " 🔒";
-                if (linkFinanceiro && !linkFinanceiro.innerText.includes("🔒")) linkFinanceiro.innerText += " 🔒";
-            }
+        // 🔥 MASTER OVERRIDE: O passe livre do Dono do App
+        const EMAIL_ADMIN = "fdsantos.melo@hotmail.com";
+        if (user.email === EMAIL_ADMIN) {
+            dadosUsuario.plano = "pro";
+            dadosUsuario.nome = "Danilo (Admin)";
+            
+            // Salva você de forma forçada no banco de dados para aparecer no Painel ADM
+            await setDoc(docRef, {
+                nome: "Danilo (Admin)",
+                email: user.email,
+                plano: "pro",
+                status: "ativo"
+            }, { merge: true });
+        }
+        // ------------------------------------------------
+
+        // Preenche o menu lateral
+        const pPerfil = document.querySelector(".menu-perfil p");
+        if (pPerfil) {
+            const planoTexto = dadosUsuario.plano === "pro" ? "⭐ Plano PRO" : "Plano Grátis";
+            const corPlano = dadosUsuario.plano === "pro" ? "#ffc107" : "#6c757d";
+            pPerfil.innerHTML = `Olá, ${dadosUsuario.nome || 'Motorista'}!<br><small style="color: ${corPlano}; font-weight: bold;">${planoTexto}</small>`;
+        }
+
+        // Tranca os menus se não for PRO
+        if (dadosUsuario.plano !== "pro") {
+            const linkKM = document.querySelector('.menu-links a:nth-child(2)'); 
+            const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)'); 
+            if (linkKM && !linkKM.innerText.includes("🔒")) linkKM.innerText += " 🔒";
+            if (linkFinanceiro && !linkFinanceiro.innerText.includes("🔒")) linkFinanceiro.innerText += " 🔒";
         }
     } else {
         window.location.href = "login.html";
