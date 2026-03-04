@@ -6,13 +6,9 @@
     <title>Roturbo - Painel ADM</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* =========================================
-           ESTILOS DO NOVO DASHBOARD ADM
-           ========================================= */
         :root { --primary: #007bff; --dark: #1e293b; --bg: #f8fafc; --text: #334155; }
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
         
-        /* Menu Lateral */
         .sidebar { width: 250px; background: var(--dark); color: white; display: flex; flex-direction: column; }
         .sidebar-header { padding: 25px 20px; font-size: 24px; font-weight: bold; text-align: center; border-bottom: 1px solid #334155; letter-spacing: 1px; }
         .sidebar-header span { color: var(--primary); }
@@ -22,34 +18,36 @@
         .logout-btn { padding: 20px; background: #dc3545; color: white; text-align: center; cursor: pointer; font-weight: bold; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .logout-btn:hover { background: #c82333; }
         
-        /* Área Principal */
         .main-content { flex: 1; padding: 30px; overflow-y: auto; }
         .header-top { display: flex; flex-direction: column; margin-bottom: 30px; }
         .header-top h2 { margin: 0; font-size: 28px; color: #0f172a; }
         .header-top p { margin: 5px 0 0; color: #64748b; }
         
+        /* Sistema de Abas */
+        .conteudo-aba { display: none; animation: fadeIn 0.3s; }
+        .conteudo-aba.ativa { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         /* Cards de Resumo */
         .cards-resumo { display: flex; gap: 20px; margin-bottom: 30px; }
         .card-adm { flex: 1; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid var(--primary); display: flex; align-items: center; justify-content: space-between; }
         .card-adm.pro { border-left-color: #ffc107; }
         .card-adm.block { border-left-color: #dc3545; }
+        .card-adm.money { border-left-color: #22c55e; }
         .card-info h3 { margin: 0; font-size: 13px; color: #64748b; text-transform: uppercase; font-weight: 700; }
         .card-info h2 { margin: 5px 0 0; font-size: 32px; color: #0f172a; }
         .card-icon { font-size: 40px; color: #f1f5f9; }
         
-        /* Barra de Ferramentas (Pesquisa e Atualizar) */
         .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .search-bar { display: flex; align-items: center; background: #f8fafc; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0; width: 350px; }
         .search-bar input { border: none; background: transparent; outline: none; margin-left: 10px; width: 100%; color: var(--text); font-size: 14px; }
         
-        /* Tabela */
         .table-container { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden; }
         .tabela-usuarios { width: 100%; border-collapse: collapse; }
         .tabela-usuarios th, .tabela-usuarios td { padding: 16px 20px; text-align: left; border-bottom: 1px solid #f1f5f9; }
         .tabela-usuarios th { background: #f8fafc; font-weight: 600; color: #475569; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
         .tabela-usuarios tbody tr:hover { background: #f8fafc; }
         
-        /* Badges (Etiquetas) e Botões */
         .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-align: center; display: inline-block; min-width: 70px; }
         .badge.pro { background: #fef08a; color: #854d0e; }
         .badge.gratis { background: #e2e8f0; color: #475569; }
@@ -65,6 +63,11 @@
         .btn-desbloquear { background: #22c55e; }
         .btn-excluir { background: #ef4444; }
         .btn-atualizar { background: #0ea5e9; font-size: 14px; padding: 10px 15px; }
+
+        /* Estilos Configurações */
+        .config-box { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 600px; }
+        .config-box label { display: block; font-weight: bold; margin-bottom: 10px; color: #0f172a; }
+        .config-box textarea { width: 100%; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 14px; margin-bottom: 15px; resize: vertical; }
     </style>
 </head>
 <body>
@@ -74,9 +77,9 @@
             <i class="fa-solid fa-route"></i> Ro<span>turbo</span>
         </div>
         <ul class="nav-links">
-            <li class="active"><i class="fa-solid fa-users"></i> Gestão de Motoristas</li>
-            <li><i class="fa-solid fa-chart-line"></i> Relatórios <small style="font-size: 10px; background: #eab308; color: #000; padding: 2px 5px; border-radius: 4px; margin-left: auto;">Breve</small></li>
-            <li><i class="fa-solid fa-gear"></i> Configurações do App</li>
+            <li class="nav-item active" onclick="mudarAba('motoristas', this)"><i class="fa-solid fa-users"></i> Gestão de Motoristas</li>
+            <li class="nav-item" onclick="mudarAba('relatorios', this)"><i class="fa-solid fa-chart-line"></i> Relatórios</li>
+            <li class="nav-item" onclick="mudarAba('config', this)"><i class="fa-solid fa-gear"></i> Configurações do App</li>
         </ul>
         <div class="logout-btn" id="btn-sair-adm">
             <i class="fa-solid fa-right-from-bracket"></i> Sair do Painel
@@ -84,65 +87,116 @@
     </div>
 
     <div class="main-content">
-        <div class="header-top">
-            <h2>Centro de Comando ADM</h2>
-            <p>Gerencie seus usuários, planos e acessos à inteligência de rotas.</p>
+        
+        <div id="aba-motoristas" class="conteudo-aba ativa">
+            <div class="header-top">
+                <h2>Centro de Comando ADM</h2>
+                <p>Gerencie seus usuários, planos e acessos à inteligência de rotas.</p>
+            </div>
+
+            <div class="cards-resumo">
+                <div class="card-adm">
+                    <div class="card-info">
+                        <h3>Total de Usuários</h3>
+                        <h2 id="adm-total-usuarios">0</h2>
+                    </div>
+                    <i class="fa-solid fa-users card-icon" style="color: #cbd5e1;"></i>
+                </div>
+                <div class="card-adm pro">
+                    <div class="card-info">
+                        <h3>Assinantes PRO</h3>
+                        <h2 id="adm-total-pro">0</h2>
+                    </div>
+                    <i class="fa-solid fa-star card-icon" style="color: #fef08a;"></i>
+                </div>
+                <div class="card-adm block">
+                    <div class="card-info">
+                        <h3>Bloqueados</h3>
+                        <h2 id="adm-total-bloqueados">0</h2>
+                    </div>
+                    <i class="fa-solid fa-ban card-icon" style="color: #fee2e2;"></i>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass" style="color: #94a3b8;"></i>
+                    <input type="text" id="input-pesquisa" placeholder="Buscar por nome ou e-mail..." onkeyup="filtrarUsuarios()">
+                </div>
+                <button class="btn-acao btn-atualizar" onclick="carregarUsuarios()">
+                    <i class="fa-solid fa-rotate-right"></i> Atualizar Lista
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="tabela-usuarios">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Plano</th>
+                            <th>Vencimento</th>
+                            <th>Status</th>
+                            <th>Ações Rápidas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-corpo">
+                        <tr><td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
+                            <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i><br>
+                            Carregando banco de dados...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <div class="cards-resumo">
-            <div class="card-adm">
-                <div class="card-info">
-                    <h3>Total de Usuários</h3>
-                    <h2 id="adm-total-usuarios">0</h2>
-                </div>
-                <i class="fa-solid fa-users card-icon" style="color: #cbd5e1;"></i>
+        <div id="aba-relatorios" class="conteudo-aba">
+            <div class="header-top">
+                <h2>Relatórios e Financeiro</h2>
+                <p>Visão geral do desempenho do seu aplicativo.</p>
             </div>
-            <div class="card-adm pro">
-                <div class="card-info">
-                    <h3>Assinantes PRO</h3>
-                    <h2 id="adm-total-pro">0</h2>
+
+            <div class="cards-resumo">
+                <div class="card-adm money">
+                    <div class="card-info">
+                        <h3>Faturamento Estimado (Mês)</h3>
+                        <h2 id="adm-faturamento">R$ 0,00</h2>
+                        <small style="color: #64748b;">Baseado em assinaturas PRO ativas</small>
+                    </div>
+                    <i class="fa-solid fa-sack-dollar card-icon" style="color: #dcfce7;"></i>
                 </div>
-                <i class="fa-solid fa-star card-icon" style="color: #fef08a;"></i>
             </div>
-            <div class="card-adm block">
-                <div class="card-info">
-                    <h3>Bloqueados</h3>
-                    <h2 id="adm-total-bloqueados">0</h2>
-                </div>
-                <i class="fa-solid fa-ban card-icon" style="color: #fee2e2;"></i>
+
+            <div class="config-box">
+                <h3>Exportação de Dados</h3>
+                <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Faça o download da sua base completa de motoristas para abrir no Excel ou usar em campanhas de marketing.</p>
+                <button class="btn-acao btn-atualizar" style="background: #10b981;" onclick="exportarParaCSV()">
+                    <i class="fa-solid fa-file-csv"></i> Baixar Lista de Motoristas (CSV)
+                </button>
             </div>
         </div>
 
-        <div class="toolbar">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass" style="color: #94a3b8;"></i>
-                <input type="text" id="input-pesquisa" placeholder="Buscar por nome ou e-mail..." onkeyup="filtrarUsuarios()">
+        <div id="aba-config" class="conteudo-aba">
+            <div class="header-top">
+                <h2>Configurações do App</h2>
+                <p>Altere mensagens e comportamentos do Roturbo em tempo real.</p>
             </div>
-            <button class="btn-acao btn-atualizar" onclick="window.location.reload()">
-                <i class="fa-solid fa-rotate-right"></i> Atualizar Lista
-            </button>
+
+            <div class="config-box">
+                <label for="aviso-global"><i class="fa-solid fa-bullhorn" style="color: #f97316;"></i> Aviso Global para os Motoristas</label>
+                <p style="color: #64748b; font-size: 13px; margin-top: 0;">O texto digitado aqui aparecerá como um alerta assim que qualquer motorista abrir o aplicativo.</p>
+                
+                <textarea id="aviso-global" rows="4" placeholder="Ex: O aplicativo passará por instabilidade hoje às 23h..."></textarea>
+                
+                <button class="btn-acao btn-atualizar" onclick="salvarAvisoGlobal()">
+                    <i class="fa-solid fa-floppy-disk"></i> Salvar Aviso
+                </button>
+                <button class="btn-acao btn-excluir" style="display: inline-flex; margin-left: 10px;" onclick="limparAvisoGlobal()">
+                    <i class="fa-solid fa-trash"></i> Remover Aviso
+                </button>
+            </div>
         </div>
 
-        <div class="table-container">
-            <table class="tabela-usuarios">
-                <thead>
-    <tr>
-        <th>Nome</th>
-        <th>E-mail</th>
-        <th>Plano</th>
-        <th>Vencimento</th> 
-        <th>Status</th>
-        <th>Ações Rápidas</th>
-    </tr>
-</thead>
-                <tbody id="tabela-corpo">
-                    <tr><td colspan="5" style="text-align: center; padding: 40px; color: #64748b;">
-                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i><br>
-                        Carregando banco de dados...
-                    </td></tr>
-                </tbody>
-            </table>
-        </div>
     </div>
 
     <script type="module" src="admin.js"></script>

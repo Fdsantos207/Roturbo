@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBceowtEvmh9YJTLpeGR2rYnOSjmXRjH_U",
@@ -15,8 +15,11 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Seu e-mail de administrador (Trava de segurança!)
 const EMAIL_ADMIN = "fdsantos.melo@hotmail.com"; 
+
+// Variável global para armazenar os usuários e exportar depois
+let listaDeUsuariosExportacao = [];
+const VALOR_MENSALIDADE = 29.90; // Defina aqui o preço do seu plano PRO
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -24,7 +27,8 @@ onAuthStateChanged(auth, (user) => {
             alert("Acesso Negado! Você não é um administrador.");
             window.location.href = "index.html";
         } else {
-            carregarUsuarios(); // Se for você, carrega o painel
+            carregarUsuarios(); 
+            carregarConfiguracoesGlobais(); // Carrega o texto do aviso
         }
     } else {
         window.location.href = "login.html";
@@ -35,51 +39,67 @@ document.getElementById("btn-sair-adm").onclick = () => {
     signOut(auth).then(() => window.location.href = "login.html");
 };
 
-async function carregarUsuarios() {
+// --- NAVEGAÇÃO ENTRE ABAS ---
+window.mudarAba = (abaId, elementoClicado) => {
+    // Esconde todas as abas
+    document.querySelectorAll('.conteudo-aba').forEach(aba => aba.classList.remove('ativa'));
+    // Remove a classe 'active' de todos os itens do menu
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    
+    // Mostra a aba escolhida e marca o menu
+    document.getElementById(`aba-${abaId}`).classList.add('ativa');
+    elementoClicado.classList.add('active');
+};
+
+// --- CARREGAR USUÁRIOS E RELATÓRIOS ---
+window.carregarUsuarios = async () => {
     const tabelaCorpo = document.getElementById("tabela-corpo");
     
     try {
         const querySnapshot = await getDocs(collection(db, "usuarios"));
         tabelaCorpo.innerHTML = "";
+        listaDeUsuariosExportacao = []; // Zera a lista
         
         let totalUsers = 0;
         let totalPro = 0;
         let totalBloqueados = 0;
-        const dataAtual = new Date().getTime(); // Pega a data de hoje em milissegundos
+        const dataAtual = new Date().getTime(); 
 
         querySnapshot.forEach((documento) => {
             const user = documento.data();
             const uid = documento.id;
-            totalUsers++;
+            
+            // Salva na lista global para o CSV
+            listaDeUsuariosExportacao.push({
+                Nome: user.nome || "Sem Nome",
+                Email: user.email || "Sem Email",
+                Plano: user.plano || "gratis",
+                Status: user.status || "ativo",
+                Vencimento: user.vencimento ? new Date(user.vencimento).toLocaleDateString('pt-BR') : "Sem data"
+            });
 
+            totalUsers++;
             const plano = user.plano || "gratis";
             const status = user.status || "ativo";
 
             if (plano === "pro") totalPro++;
             if (status === "bloqueado") totalBloqueados++;
 
-            // --- LÓGICA DE VENCIMENTO ---
             let vencimentoTexto = "<span style='color: #94a3b8; font-size: 13px;'>Sem data</span>";
-            
             if (user.vencimento) {
                 const dataVenc = new Date(user.vencimento);
                 const dataFormatada = dataVenc.toLocaleDateString('pt-BR');
-                
                 if (user.vencimento < dataAtual && plano === "pro") {
-                    // Está vencido! (Vermelho)
                     vencimentoTexto = `<span style='color: #ef4444; font-weight: bold;'><i class="fa-solid fa-circle-exclamation"></i> Vencido (${dataFormatada})</span>`;
                 } else if (plano === "pro") {
-                    // Em dia! (Verde)
                     vencimentoTexto = `<span style='color: #22c55e; font-weight: bold;'><i class="fa-solid fa-circle-check"></i> ${dataFormatada}</span>`;
                 } else {
-                    // Plano grátis, mas com data antiga salva (Cinza)
                     vencimentoTexto = `<span style='color: #64748b;'>${dataFormatada}</span>`;
                 }
             }
 
             const tr = document.createElement("tr");
 
-            // Botões de Ação COM ÍCONES PROFISSIONAIS
             const btnPlano = plano === "pro" 
                 ? `<button class="btn-acao btn-remover-pro" onclick="alterarUsuario('${uid}', 'plano', 'gratis')"><i class="fa-solid fa-arrow-down"></i> Tirar PRO</button>` 
                 : `<button class="btn-acao btn-pro" onclick="alterarUsuario('${uid}', 'plano', 'pro')"><i class="fa-solid fa-star"></i> Dar PRO</button>`;
@@ -88,9 +108,7 @@ async function carregarUsuarios() {
                 ? `<button class="btn-acao btn-desbloquear" onclick="alterarUsuario('${uid}', 'status', 'ativo')"><i class="fa-solid fa-unlock"></i> Desbloquear</button>`
                 : `<button class="btn-acao btn-bloquear" onclick="alterarUsuario('${uid}', 'status', 'bloqueado')"><i class="fa-solid fa-lock"></i> Bloquear</button>`;
 
-            const btnExcluir = `<button class="btn-acao btn-excluir" onclick="excluirUsuario('${uid}', '${user.nome || 'Usuário Sem Nome'}')"><i class="fa-solid fa-trash"></i> Excluir</button>`;
-
-            // NOVO BOTÃO: Renovar 30 dias
+            const btnExcluir = `<button class="btn-acao btn-excluir" onclick="excluirUsuario('${uid}', '${user.nome || 'Usuário'}')"><i class="fa-solid fa-trash"></i></button>`;
             const btnRenovar = `<button class="btn-acao" style="background: #0ea5e9;" onclick="renovarPlano('${uid}')"><i class="fa-solid fa-calendar-plus"></i> +30 Dias</button>`;
 
             tr.innerHTML = `
@@ -111,88 +129,111 @@ async function carregarUsuarios() {
             tabelaCorpo.appendChild(tr);
         });
 
-        // Atualiza os cards numéricos no topo
+        // Atualiza Cards
         document.getElementById("adm-total-usuarios").innerText = totalUsers;
         document.getElementById("adm-total-pro").innerText = totalPro;
         document.getElementById("adm-total-bloqueados").innerText = totalBloqueados;
+        
+        // Atualiza Faturamento (Aba Relatórios)
+        const faturamento = totalPro * VALOR_MENSALIDADE;
+        document.getElementById("adm-faturamento").innerText = `R$ ${faturamento.toFixed(2).replace('.', ',')}`;
 
     } catch (erro) {
-        console.error("Erro ao carregar usuários:", erro);
-        tabelaCorpo.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">Erro ao carregar dados do banco.</td></tr>`;
+        console.error("Erro ao carregar:", erro);
+        tabelaCorpo.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">Erro ao carregar dados.</td></tr>`;
     }
 }
 
-// NOVA FUNÇÃO: Barra de Pesquisa (Filtro em Tempo Real)
+// --- PESQUISA ---
 window.filtrarUsuarios = () => {
     const inputPesquisa = document.getElementById("input-pesquisa").value.toLowerCase();
     const linhasTabela = document.querySelectorAll("#tabela-corpo tr");
-
     linhasTabela.forEach(linha => {
-        // Pega o texto da coluna Nome e E-mail
         const nome = linha.cells[0]?.innerText.toLowerCase() || "";
         const email = linha.cells[1]?.innerText.toLowerCase() || "";
-        
-        // Esconde ou mostra baseado no que foi digitado
-        if (nome.includes(inputPesquisa) || email.includes(inputPesquisa)) {
-            linha.style.display = "";
-        } else {
-            linha.style.display = "none";
-        }
+        linha.style.display = (nome.includes(inputPesquisa) || email.includes(inputPesquisa)) ? "" : "none";
     });
 };
 
-// Funções de Gerenciamento Padrão
+// --- AÇÕES DO USUÁRIO ---
 window.alterarUsuario = async (uid, campo, novoValor) => {
-    const acaoTexto = campo === 'plano' ? (novoValor === 'pro' ? 'DAR PRO' : 'TIRAR PRO') : (novoValor === 'ativo' ? 'DESBLOQUEAR' : 'BLOQUEAR');
-    const confirmacao = confirm(`Você deseja confirmar a ação de ${acaoTexto} para este usuário?`);
-    if (!confirmacao) return;
-
+    if (!confirm("Confirmar alteração para este usuário?")) return;
     try {
-        const userRef = doc(db, "usuarios", uid);
-        await updateDoc(userRef, {
-            [campo]: novoValor
-        });
-        carregarUsuarios(); // Atualiza a tabela imediatamente
-    } catch (erro) {
-        console.error("Erro ao atualizar:", erro);
-        alert("Erro ao comunicar com o banco de dados.");
-    }
+        await updateDoc(doc(db, "usuarios", uid), { [campo]: novoValor });
+        carregarUsuarios(); 
+    } catch (erro) { alert("Erro ao atualizar."); }
 };
 
 window.excluirUsuario = async (uid, nome) => {
-    const confirmacao = confirm(`⚠️ ALERTA DE EXCLUSÃO: Tem certeza que deseja APAGAR ${nome} do banco de dados? Os históricos também serão perdidos.`);
-    if (!confirmacao) return;
-
+    if (!confirm(`⚠️ ALERTA: Apagar ${nome} do banco de dados?`)) return;
     try {
-        const userRef = doc(db, "usuarios", uid);
-        await deleteDoc(userRef);
+        await deleteDoc(doc(db, "usuarios", uid));
         carregarUsuarios();
+    } catch (erro) { alert("Erro ao excluir."); }
+};
+
+window.renovarPlano = async (uid) => {
+    if (!confirm("Renovar plano PRO deste usuário por +30 dias?")) return;
+    const dataFutura = new Date();
+    dataFutura.setDate(dataFutura.getDate() + 30);
+    try {
+        await updateDoc(doc(db, "usuarios", uid), { plano: "pro", vencimento: dataFutura.getTime() });
+        alert(`Sucesso! Liberado até ${dataFutura.toLocaleDateString('pt-BR')}`);
+        carregarUsuarios(); 
+    } catch (erro) { alert("Erro ao renovar."); }
+};
+
+// ==========================================
+// NOVAS FUNÇÕES: RELATÓRIOS E CONFIGURAÇÕES
+// ==========================================
+
+// EXPORTAR PARA CSV
+window.exportarParaCSV = () => {
+    if (listaDeUsuariosExportacao.length === 0) return alert("Nenhum usuário para exportar.");
+    
+    // Cria o cabeçalho do CSV
+    let csvContent = "data:text/csv;charset=utf-8,Nome,Email,Plano,Status,Vencimento\n";
+    
+    // Adiciona os dados
+    listaDeUsuariosExportacao.forEach(u => {
+        const linha = `"${u.Nome}","${u.Email}","${u.Plano}","${u.Status}","${u.Vencimento}"`;
+        csvContent += linha + "\n";
+    });
+
+    // Cria o arquivo e faz o download automático
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `roturbo_motoristas_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+// AVISO GLOBAL NO APP
+async function carregarConfiguracoesGlobais() {
+    try {
+        const docRef = doc(db, "configuracoes", "geral");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().avisoGlobal) {
+            document.getElementById("aviso-global").value = docSnap.data().avisoGlobal;
+        }
+    } catch (erro) { console.log("Erro ao carregar configurações", erro); }
+}
+
+window.salvarAvisoGlobal = async () => {
+    const aviso = document.getElementById("aviso-global").value.trim();
+    try {
+        // Usa setDoc para criar o documento caso ele não exista ainda
+        await setDoc(doc(db, "configuracoes", "geral"), { avisoGlobal: aviso }, { merge: true });
+        alert(aviso ? "Aviso global publicado com sucesso!" : "Aviso global apagado com sucesso!");
     } catch (erro) {
-        console.error("Erro ao excluir:", erro);
-        alert("Erro ao excluir o usuário do Firebase.");
+        console.error(erro);
+        alert("Erro ao salvar o aviso.");
     }
 };
 
-// --- NOVA FUNÇÃO: RENOVAR PLANO (+30 DIAS) ---
-window.renovarPlano = async (uid) => {
-    const confirmacao = confirm("Deseja ativar/renovar o plano PRO deste usuário por +30 dias?");
-    if (!confirmacao) return;
-
-    // Calcula a data de hoje + 30 dias
-    const dataFutura = new Date();
-    dataFutura.setDate(dataFutura.getDate() + 30);
-    const vencimentoEmMilissegundos = dataFutura.getTime();
-
-    try {
-        const userRef = doc(db, "usuarios", uid);
-        await updateDoc(userRef, {
-            plano: "pro", // Já garante que ele vira PRO
-            vencimento: vencimentoEmMilissegundos
-        });
-        alert(`Sucesso! Acesso liberado até ${dataFutura.toLocaleDateString('pt-BR')}`);
-        carregarUsuarios(); // Atualiza a tabela com a data verdinha
-    } catch (erro) {
-        console.error("Erro ao renovar:", erro);
-        alert("Erro ao aplicar a renovação.");
-    }
+window.limparAvisoGlobal = () => {
+    document.getElementById("aviso-global").value = "";
+    salvarAvisoGlobal(); // Salva vazio no banco
 };
