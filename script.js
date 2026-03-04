@@ -16,7 +16,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 let usuarioLogado = null;
-let dadosUsuario = null; // NOVA VARIÁVEL: Guarda os dados do banco (incluindo o plano)
+let dadosUsuario = null; 
 
 let mapa;
 let directionsService;
@@ -30,9 +30,8 @@ onAuthStateChanged(auth, async (user) => {
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-            dadosUsuario = docSnap.data(); // Salva se é pro ou gratis
+            dadosUsuario = docSnap.data(); 
             
-            // Atualiza o nome e a etiqueta de plano no menu lateral
             const pPerfil = document.querySelector(".menu-perfil p");
             if (pPerfil) {
                 const planoTexto = dadosUsuario.plano === "pro" ? "⭐ Plano PRO" : "Plano Grátis";
@@ -40,10 +39,9 @@ onAuthStateChanged(auth, async (user) => {
                 pPerfil.innerHTML = `Olá, ${dadosUsuario.nome || 'Motorista'}!<br><small style="color: ${corPlano}; font-weight: bold;">${planoTexto}</small>`;
             }
 
-            // Coloca os cadeados nos menus se NÃO for PRO
             if (dadosUsuario.plano !== "pro") {
-                const linkKM = document.querySelector('.menu-links a:nth-child(2)'); // Histórico KM
-                const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)'); // Financeiro
+                const linkKM = document.querySelector('.menu-links a:nth-child(2)'); 
+                const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)'); 
                 if (linkKM && !linkKM.innerText.includes("🔒")) linkKM.innerText += " 🔒";
                 if (linkFinanceiro && !linkFinanceiro.innerText.includes("🔒")) linkFinanceiro.innerText += " 🔒";
             }
@@ -92,10 +90,9 @@ window.voltarParaMapa = () => {
 
 // --- LOGICA FINANCEIRA PROFISSIONAL (MEU CORRE) ---
 async function abrirFinanceiro() {
-    // TRAVA DE SEGURANÇA: Bloqueia a execução se não for PRO
     if (!dadosUsuario || dadosUsuario.plano !== "pro") {
         alert("🔒 Recurso VIP: A Gestão do Corre é exclusiva para motoristas PRO. Faça o upgrade para acessar!");
-        return; // O código para de rodar aqui e não abre a aba
+        return; 
     }
 
     resetarTelas();
@@ -152,10 +149,9 @@ async function carregarResumoFinanceiro() {
 
 // --- LÓGICA DE KM RODADOS ---
 async function carregarHistorico() {
-    // TRAVA DE SEGURANÇA: Bloqueia a execução se não for PRO
     if (!dadosUsuario || dadosUsuario.plano !== "pro") {
         alert("🔒 Recurso VIP: O Histórico de KM é exclusivo para motoristas PRO. Faça o upgrade para acessar!");
-        return; // O código para de rodar aqui e não abre a aba
+        return; 
     }
 
     resetarTelas();
@@ -198,7 +194,7 @@ function criarNovaParada() {
     // TRAVA DE SEGURANÇA: Se não for PRO e tentar passar de 5 paradas
     if ((!dadosUsuario || dadosUsuario.plano !== "pro") && numeroDeParadasAtuais >= 5) {
         alert("🔒 Limite Atingido: O plano Grátis permite otimizar até 5 paradas por rota. Faça o upgrade para o PRO para ter paradas ilimitadas!");
-        return; // Para a função aqui e não adiciona o novo campo
+        return; 
     }
 
     const div = document.createElement("div");
@@ -214,7 +210,6 @@ function criarNovaParada() {
     labelCam.htmlFor = idUnico;
     labelCam.innerText = "📸";
 
-    // TRAVA DE SEGURANÇA NA CÂMERA (TESSERACT)
     labelCam.onclick = (e) => {
         if (!dadosUsuario || dadosUsuario.plano !== "pro") {
             e.preventDefault(); 
@@ -246,178 +241,4 @@ function criarNovaParada() {
     btnRemover.onclick = () => containerParadas.removeChild(div);
 
     div.append(input, labelCam, inputFoto, btnRemover);
-    containerParadas.appendChild(div);
-    configurarAutocomplete(input);
-}
-
-    // TRAVA DE SEGURANÇA NA CÂMERA (TESSERACT)
-    labelCam.onclick = (e) => {
-        if (!dadosUsuario || dadosUsuario.plano !== "pro") {
-            e.preventDefault(); // Impede o celular de abrir a galeria ou câmera
-            alert("📸 Recurso VIP: A leitura de endereço por foto é exclusiva do plano PRO!");
-        }
-    };
-
-    const inputFoto = document.createElement("input");
-    inputFoto.type = "file";
-    inputFoto.id = idUnico;
-    inputFoto.accept = "image/*";
-    inputFoto.capture = "environment";
-    inputFoto.style.display = "none";
-
-    inputFoto.onchange = (e) => {
-        const arq = e.target.files[0];
-        if (arq) {
-            input.value = "Lendo... ⏳";
-            Tesseract.recognize(arq, 'por').then(({ data: { text } }) => {
-                input.value = text.substring(0, 45);
-                input.focus();
-            });
-        }
-    };
-
-    const btnRemover = document.createElement("button");
-    btnRemover.innerText = "×";
-    btnRemover.className = "btn-remover-parada";
-    btnRemover.onclick = () => containerParadas.removeChild(div);
-
-    div.append(input, labelCam, inputFoto, btnRemover);
-    containerParadas.appendChild(div);
-    configurarAutocomplete(input);
-}
-
-// --- EVENTOS DE INTERFACE ---
-document.addEventListener("DOMContentLoaded", function() {
-    const btnMenu = document.getElementById("btn-menu");
-    const btnFecharMenu = document.getElementById("btn-fechar-menu");
-    const menuLateral = document.getElementById("menu-lateral");
-    const btnCalcular = document.getElementById("btn-calcular");
-    const btnAddParada = document.getElementById("btn-add-parada");
-    const btnSair = document.querySelector(".menu-item.sair");
-    const btnSalvarFinanceiro = document.getElementById("btn-salvar-financeiro");
-
-    // Seletores da nova lógica Financeira
-    const btnUnico = document.getElementById("btn-financeiro-unico");
-    const btnVarios = document.getElementById("btn-financeiro-varios");
-    const divUnico = document.getElementById("financeiro-input-unico");
-    const divVarios = document.getElementById("financeiro-input-varios");
-
-    const linkKM = document.querySelector('.menu-links a:nth-child(2)');
-    const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)');
-
-    // Alternar modos no Financeiro
-    if (btnUnico) btnUnico.onclick = () => { divUnico.style.display = "block"; divVarios.style.display = "none"; };
-    if (btnVarios) btnVarios.onclick = () => { divUnico.style.display = "none"; divVarios.style.display = "block"; };
-
-    if (linkKM) linkKM.onclick = (e) => { e.preventDefault(); carregarHistorico(); };
-    if (linkFinanceiro) linkFinanceiro.onclick = (e) => { e.preventDefault(); abrirFinanceiro(); };
-    
-    if (btnMenu) btnMenu.addEventListener("click", () => menuLateral.classList.add("aberto"));
-    if (btnFecharMenu) btnFecharMenu.addEventListener("click", () => menuLateral.classList.remove("aberto"));
-
-    if (btnSair) {
-        btnSair.onclick = (e) => {
-            e.preventDefault();
-            signOut(auth).then(() => window.location.href = "login.html");
-        };
-    }
-
-    // Lógica para Salvar Financeiro (Soma automática da lista)
-    if (btnSalvarFinanceiro) {
-        btnSalvarFinanceiro.onclick = async () => {
-            const gasto = parseFloat(document.getElementById("gasto-valor").value) || 0;
-            const categoria = document.getElementById("categoria-gasto").value;
-            let totalGanhoLancado = 0;
-
-            if (divVarios.style.display === "block") {
-                const texto = document.getElementById("lista-ganhos-colados").value.trim();
-                if (texto) {
-                    const listaGanhos = texto.split('\n').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-                    totalGanhoLancado = listaGanhos.reduce((a, b) => a + b, 0);
-                }
-            } else {
-                totalGanhoLancado = parseFloat(document.getElementById("ganho-valor").value) || 0;
-            }
-
-            if (totalGanhoLancado === 0 && gasto === 0) return alert("Insira algum valor!");
-            
-            try {
-                await addDoc(collection(db, "usuarios", usuarioLogado.uid, "financeiro"), {
-                    ganho: totalGanhoLancado, 
-                    gasto: gasto, 
-                    categoria: categoria, 
-                    lucro: totalGanhoLancado - gasto, 
-                    data: new Date()
-                });
-                alert("Corre salvo com sucesso! 🚀");
-                document.getElementById("ganho-valor").value = "";
-                document.getElementById("gasto-valor").value = "";
-                document.getElementById("lista-ganhos-colados").value = "";
-                carregarResumoFinanceiro();
-            } catch (e) { console.error(e); }
-        };
-    }
-
-    if (btnAddParada) btnAddParada.onclick = () => criarNovaParada();
-    if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
-});
-
-// --- ROTA E NAVEGAÇÃO (MANTIDA ORIGINAL) ---
-async function calcularRotaOtimizada() {
-    const origem = document.getElementById("origem").value;
-    const destino = document.getElementById("destino").value;
-    const inputs = document.querySelectorAll(".input-parada");
-    if (!origem || !destino) return alert("Origem e Destino são obrigatórios!");
-
-    let waypoints = [];
-    inputs.forEach(i => { if (i.value) waypoints.push({ location: i.value, stopover: true }); });
-
-    const request = {
-        origin: origem,
-        destination: destino,
-        waypoints: waypoints,
-        optimizeWaypoints: true,
-        travelMode: google.maps.TravelMode.DRIVING
-    };
-
-    directionsService.route(request, async (result, status) => {
-        if (status === "OK") {
-            directionsRenderer.setDirections(result);
-            const dist = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
-            const km = (dist / 1000).toFixed(2);
-
-            if (usuarioLogado) {
-                await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), {
-                    distancia: km, data: new Date(), origem, destino
-                });
-            }
-            gerarBotoesDeNavegacao(result);
-        }
-    });
-}
-
-function gerarBotoesDeNavegacao(result) {
-    const divLista = document.getElementById("lista-paradas");
-    divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>";
-    result.routes[0].legs.forEach((leg, i) => {
-        const btn = document.createElement("a");
-        btn.className = "btn-navegar";
-        btn.innerText = `Navegar para Parada ${i+1} 🚗`;
-        btn.href = `geo:0,0?q=${encodeURIComponent(leg.end_address)}`;
-        btn.onclick = function() {
-            this.classList.add("visitado");
-            this.innerText = `✅ Parada ${i+1} Finalizada`;
-        };
-        divLista.appendChild(btn);
-    });
-}
-
-// --- PWA ---
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    const banner = document.createElement('div');
-    banner.style = "background: #000; color: #fff; padding: 15px; text-align: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 999; cursor: pointer; border-bottom: 2px solid #007bff; font-weight: bold;";
-    banner.innerText = "📲 Instalar Roturbo";
-    document.body.appendChild(banner);
-    banner.onclick = () => { banner.remove(); e.prompt(); };
-});
+    container
