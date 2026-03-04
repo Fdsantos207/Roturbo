@@ -188,13 +188,19 @@ async function carregarHistorico() {
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     
-    // VERIFICA QUANTAS PARADAS JÁ EXISTEM NA TELA
-    const numeroDeParadasAtuais = containerParadas.querySelectorAll('.parada-grupo').length;
+    // MÉTODO MAIS SEGURO: Conta exatamente quantos itens existem dentro do container
+    const numeroDeParadasAtuais = containerParadas.children.length;
 
-    // TRAVA DE SEGURANÇA: Se não for PRO e tentar passar de 5 paradas
-    if ((!dadosUsuario || dadosUsuario.plano !== "pro") && numeroDeParadasAtuais >= 5) {
+    // Verifica de forma absoluta se o usuário tem a tag "pro"
+    let isPro = false;
+    if (dadosUsuario && dadosUsuario.plano === "pro") {
+        isPro = true;
+    }
+
+    // TRAVA DE SEGURANÇA: Se NÃO for PRO e tentar passar de 5 paradas (tentar colocar a 6ª)
+    if (isPro === false && numeroDeParadasAtuais >= 5) {
         alert("🔒 Limite Atingido: O plano Grátis permite otimizar até 5 paradas por rota. Faça o upgrade para o PRO para ter paradas ilimitadas!");
-        return; 
+        return; // O return faz o código parar aqui e não desenha a nova parada
     }
 
     const div = document.createElement("div");
@@ -210,8 +216,9 @@ function criarNovaParada() {
     labelCam.htmlFor = idUnico;
     labelCam.innerText = "📸";
 
+    // TRAVA DE SEGURANÇA NA CÂMERA (TESSERACT)
     labelCam.onclick = (e) => {
-        if (!dadosUsuario || dadosUsuario.plano !== "pro") {
+        if (isPro === false) {
             e.preventDefault(); 
             alert("📸 Recurso VIP: A leitura de endereço por foto é exclusiva do plano PRO!");
         }
@@ -318,7 +325,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 });
 
-// --- ROTA E NAVEGAÇÃO (MANTIDA ORIGINAL) ---
+// --- ROTA E NAVEGAÇÃO ---
 async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
