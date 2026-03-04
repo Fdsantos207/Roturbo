@@ -406,3 +406,32 @@ button:hover {
 .btn-acao.btn-bloquear { background: #fd7e14; }
 .btn-acao.btn-desbloquear { background: #28a745; }
 .btn-acao.btn-excluir { background: #dc3545; }
+
+/* =========================================
+   BANNER DE TESTE VIP (Free Trial)
+   ========================================= */
+.banner-vip {
+    background: linear-gradient(90deg, #f59e0b, #d97706); /* Dourado Premium */
+    color: white;
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: pulse-vip 2s infinite; /* Efeito de pulsar chamativo */
+}
+
+.banner-vip strong {
+    font-size: 14px;
+}
+
+@keyframes pulse-vip {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}

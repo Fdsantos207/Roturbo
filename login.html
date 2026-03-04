@@ -72,11 +72,17 @@
 
             try {
                 const cred = await createUserWithEmailAndPassword(auth, email, senha);
+                
+                // CALCULA 30 DIAS A PARTIR DE HOJE
+                const dataFutura = new Date();
+                dataFutura.setDate(dataFutura.getDate() + 30);
+
                 await setDoc(doc(db, "usuarios", cred.user.uid), {
                     nome: nome,
                     celular: cel,
                     email: email,
-                    plano: "gratis", 
+                    plano: "pro", // Dá o plano PRO de presente inicial
+                    vencimento: dataFutura.getTime(), // Salva a data de validade no banco
                     status: "ativo"
                 });
                 window.location.href = "index.html";

@@ -29,30 +29,46 @@ onAuthStateChanged(auth, async (user) => {
         const docRef = doc(db, "usuarios", user.uid);
         const docSnap = await getDoc(docRef);
         
-        // Se a ficha existir no banco, puxa ela. Se não existir, cria uma vazia.
         if (docSnap.exists()) {
             dadosUsuario = docSnap.data(); 
         } else {
             dadosUsuario = { plano: "gratis", nome: "Motorista" };
         }
 
-        // 🔥 MASTER OVERRIDE: O passe livre do Dono do App
+        // 🔥 MASTER OVERRIDE: O passe livre do Dono
         const EMAIL_ADMIN = "fdsantos.melo@hotmail.com";
         if (user.email === EMAIL_ADMIN) {
             dadosUsuario.plano = "pro";
             dadosUsuario.nome = "Danilo (Admin)";
+            await setDoc(docRef, { nome: "Danilo (Admin)", email: user.email, plano: "pro", status: "ativo" }, { merge: true });
+        }
+
+        // --- LÓGICA DE TRIAL (DEGUSTAÇÃO) E REBAIXAMENTO ---
+        const dataAtual = new Date().getTime();
+        
+        // 1. Se passou da data de vencimento, rebaixa para grátis e bloqueia na hora
+        if (dadosUsuario.plano === "pro" && dadosUsuario.vencimento && dadosUsuario.vencimento < dataAtual && user.email !== EMAIL_ADMIN) {
+            dadosUsuario.plano = "gratis";
+            alert("⚠️ Seu período de teste VIP expirou! Suas funções foram limitadas para a versão gratuita. Entre em contato para assinar o Roturbo PRO e continuar otimizando tempo e dinheiro.");
+        }
+
+        // 2. Cria o Banner de Contagem Regressiva para quem está no Teste
+        if (dadosUsuario.plano === "pro" && dadosUsuario.vencimento && dadosUsuario.vencimento > dataAtual && user.email !== EMAIL_ADMIN) {
+            // Calcula quantos dias faltam
+            const diasRestantes = Math.ceil((dadosUsuario.vencimento - dataAtual) / (1000 * 60 * 60 * 24));
             
-            // Salva você de forma forçada no banco de dados para aparecer no Painel ADM
-            await setDoc(docRef, {
-                nome: "Danilo (Admin)",
-                email: user.email,
-                plano: "pro",
-                status: "ativo"
-            }, { merge: true });
+            const painel = document.getElementById("painel-principal");
+            // Só desenha se o banner ainda não existir na tela
+            if (!document.getElementById("banner-trial") && painel) {
+                const banner = document.createElement("div");
+                banner.id = "banner-trial";
+                banner.className = "banner-vip";
+                banner.innerHTML = `🎁 <span><strong>Acesso VIP Liberado!</strong> Restam ${diasRestantes} dias de teste grátis.</span>`;
+                painel.insertBefore(banner, painel.firstChild); // Coloca bem no topo do painel
+            }
         }
         // ------------------------------------------------
 
-        // Preenche o menu lateral
         const pPerfil = document.querySelector(".menu-perfil p");
         if (pPerfil) {
             const planoTexto = dadosUsuario.plano === "pro" ? "⭐ Plano PRO" : "Plano Grátis";
@@ -60,7 +76,6 @@ onAuthStateChanged(auth, async (user) => {
             pPerfil.innerHTML = `Olá, ${dadosUsuario.nome || 'Motorista'}!<br><small style="color: ${corPlano}; font-weight: bold;">${planoTexto}</small>`;
         }
 
-        // Tranca os menus se não for PRO
         if (dadosUsuario.plano !== "pro") {
             const linkKM = document.querySelector('.menu-links a:nth-child(2)'); 
             const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)'); 
