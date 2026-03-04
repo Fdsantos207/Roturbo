@@ -15,6 +15,7 @@ body {
     padding: 20px; 
     border-radius: 10px; 
     box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+    margin-top: 70px; /* O painel principal precisa descer um pouco para não ficar embaixo da barra */
 }
 
 /* Aplica para os inputs e botões principais (100% da largura) */
@@ -49,67 +50,79 @@ button:hover {
 }
 
 /* =========================================
-   2. O GRUPO DE PARADAS (BOTÕES PEQUENOS E CAMPO)
+   2. O GRUPO DE PARADAS (Visual Moderno e Sutil)
    ========================================= */
 .parada-grupo {
     display: flex;
-    align-items: center; /* Centraliza os botões e o campo na mesma linha */
-    gap: 6px; /* Espaço pequeno e elegante entre os itens */
+    align-items: center;
+    gap: 4px;
     margin-bottom: 12px;
+    background: #ffffff;
+    padding: 4px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* Tira a margem padrão para não entortar a linha */
-.parada-grupo input, 
-.parada-grupo button, 
-.parada-grupo label {
-    margin-bottom: 0; 
-}
-
-/* O SEGREDO: Faz o campo de endereço esticar para a rua caber inteira */
-.parada-grupo input {
-    flex: 1; 
-    padding: 10px;
+/* Tira a borda do input para o container parecer o campo inteiro */
+.parada-grupo .input-parada {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 4px;
     font-size: 14px;
+    outline: none;
+    margin-bottom: 0;
+    box-shadow: none;
 }
 
-/* Estilo Base dos botõezinhos quadrados (36x36) */
-.btn-mover, .btn-remover, .btn-camera {
-    width: 36px; 
-    height: 36px; 
-    padding: 0; 
+/* Botões sutis de ação (Microfone e Câmera) */
+.btn-microfone, .btn-camera {
+    width: 34px !important; /* Força a não esticar para 100% */
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: transparent !important; /* Fundo transparente */
+    color: #64748b; /* Cinza profissional */
     font-size: 16px;
-    border-radius: 6px; 
+    border-radius: 50%;
     cursor: pointer;
     border: none;
-    flex-shrink: 0; /* Impede que o botão seja esmagado pelo campo de texto */
+    flex-shrink: 0;
+    transition: 0.2s;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
 }
 
-/* Cores de cada botãozinho */
-.btn-mover {
-    background-color: #e2e8f0; 
-    color: #475569;
-}
-.btn-mover:hover {
-    background-color: #cbd5e1;
+/* Efeitos ao passar o mouse (Hover) ou quando clica */
+.btn-microfone:hover { background: #eff6ff !important; color: #3b82f6; } /* Fundo azulzinho claro */
+.btn-camera:hover { background: #fefce8 !important; color: #eab308; } /* Fundo amarelinho claro */
+
+/* Botão de Fechar/Remover (X) */
+.btn-remover-parada {
+    width: 28px !important;
+    height: 28px;
+    background: #f1f5f9 !important; /* Cinza bem clarinho */
+    color: #ef4444; /* X vermelho */
+    border: none;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-bottom: 0 !important;
+    margin-left: 4px;
+    transition: 0.2s;
+    padding: 0 !important;
 }
 
-.btn-camera {
-    background-color: #fbbf24; 
-    color: #000;
-}
-.btn-camera:hover {
-    background-color: #f59e0b;
-}
-
-.btn-remover {
-    background-color: #ef4444; 
-    color: white;
-}
-.btn-remover:hover {
-    background-color: #dc2626;
+.btn-remover-parada:hover {
+    background: #fee2e2 !important; /* Fundo vermelhinho ao passar o mouse */
+    color: #dc2626;
 }
 
 /* =========================================
@@ -150,21 +163,32 @@ button:hover {
 }
 
 .btn-navegar {
-    background-color: #000;
-    color: #fff;
-    text-align: center;
-    padding: 12px;
-    border-radius: 5px;
-    text-decoration: none; 
-    font-weight: bold;
     display: block;
+    background-color: #28a745; /* Verde */
+    color: white;
+    padding: 15px;
+    margin: 10px 0;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: 0.3s;
 }
+
 .btn-navegar:hover {
     background-color: #333;
 }
 
+/* ESTILO PARA O BOTÃO FINALIZADO (CHECK) */
+.btn-navegar.visitado {
+    background-color: #6c757d !important; /* Cinza escuro */
+    opacity: 0.5; /* Fica meio "apagado" */
+    text-decoration: line-through; /* Risca o texto */
+    pointer-events: none; /* Opcional: impede clicar de novo se quiser */
+}
+
 /* =========================================
-   NOVO: BARRA SUPERIOR E MENU HAMBÚRGUER
+   4. BARRA SUPERIOR E MENU HAMBÚRGUER
    ========================================= */
 .barra-superior {
     position: fixed;
@@ -196,11 +220,6 @@ button:hover {
     width: auto;
     padding: 0;
     margin-bottom: 0;
-}
-
-/* O painel principal precisa descer um pouco para não ficar embaixo da barra */
-.painel-app {
-    margin-top: 70px; 
 }
 
 /* O Menu Lateral (Escondido por padrão) */
@@ -282,49 +301,9 @@ button:hover {
     border-left: 4px solid #007bff;
 }
 
-/* Container que segura o input e os botões da parada */
-.parada-grupo {
-    display: flex;
-    align-items: center;
-    gap: 8px; /* Espaço entre o input, a câmera e o X */
-    margin-bottom: 10px;
-    background: #f8f9fa;
-    padding: 5px;
-    border-radius: 8px;
-}
-
-/* O campo de texto cresce para ocupar o espaço disponível */
-.input-parada {
-    flex: 1; 
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 14px;
-}
-
-/* Estilo do botão 📸 */
-.btn-camera {
-    font-size: 20px;
-    cursor: pointer;
-    padding: 5px;
-}
-
-/* Estilo do botão X (remover) */
-.btn-remover-parada {
-    background: #ff4d4d;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 25px;
-    height: 25px;
-    cursor: pointer;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0; /* Impede o botão de esmagar */
-}
-
+/* =========================================
+   5. FINANCEIRO E HISTÓRICO
+   ========================================= */
 .card-resumo {
     background: #007bff;
     color: white;
@@ -346,28 +325,6 @@ button:hover {
 .item-rota small { color: #666; display: block; margin-bottom: 5px; }
 .item-rota p { margin: 2px 0; font-size: 14px; }
 
-/* Botão normal (que você já tem) */
-.btn-navegar {
-    display: block;
-    background-color: #28a745; /* Verde */
-    color: white;
-    padding: 15px;
-    margin: 10px 0;
-    text-align: center;
-    text-decoration: none;
-    border-radius: 8px;
-    font-weight: bold;
-    transition: 0.3s;
-}
-
-/* ESTILO PARA O BOTÃO FINALIZADO (CHECK) */
-.btn-navegar.visitado {
-    background-color: #6c757d !important; /* Cinza escuro */
-    opacity: 0.5; /* Fica meio "apagado" */
-    text-decoration: line-through; /* Risca o texto */
-    pointer-events: none; /* Opcional: impede clicar de novo se quiser */
-}
-
 .card-financeiro {
     background: #28a745;
     color: white;
@@ -388,9 +345,9 @@ button:hover {
 .item-financeiro {
     display: flex;
     justify-content: space-between;
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    font-size: 14px;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .cor-ganho { color: #28a745; font-weight: bold; }
@@ -412,13 +369,6 @@ button:hover {
 .resumo-item { text-align: center; }
 
 .lista-transacoes { margin-top: 20px; background: white; border-radius: 10px; padding: 10px; }
-.item-financeiro {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    border-bottom: 1px solid #f0f0f0;
-}
 
 .categoria-tag {
     font-size: 10px;
@@ -431,8 +381,9 @@ button:hover {
 .btn-confirmar { background: #28a745; color: white; border: none; padding: 15px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; }
 .btn-voltar { margin-top: 20px; background: #6c757d; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; }
 
+/* Botões do Admin (Mantidos por segurança) */
 .btn-acao { border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; margin-right: 5px; margin-bottom: 5px; }
-        .btn-acao.btn-pro { background: #ffc107; color: #000; }
-        .btn-acao.btn-bloquear { background: #fd7e14; } /* Laranja para Bloquear */
-        .btn-acao.btn-desbloquear { background: #28a745; }
-        .btn-acao.btn-excluir { background: #dc3545; } /* Vermelho para Excluir */
+.btn-acao.btn-pro { background: #ffc107; color: #000; }
+.btn-acao.btn-bloquear { background: #fd7e14; }
+.btn-acao.btn-desbloquear { background: #28a745; }
+.btn-acao.btn-excluir { background: #dc3545; }
