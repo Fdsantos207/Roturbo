@@ -188,9 +188,19 @@ async function carregarHistorico() {
     } catch (e) { console.error(e); }
 }
 
-// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA (ÚNICA) ---
+// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA (COM LIMITE PARA GRÁTIS) ---
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
+    
+    // VERIFICA QUANTAS PARADAS JÁ EXISTEM NA TELA
+    const numeroDeParadasAtuais = containerParadas.querySelectorAll('.parada-grupo').length;
+
+    // TRAVA DE SEGURANÇA: Se não for PRO e tentar passar de 5 paradas
+    if ((!dadosUsuario || dadosUsuario.plano !== "pro") && numeroDeParadasAtuais >= 5) {
+        alert("🔒 Limite Atingido: O plano Grátis permite otimizar até 5 paradas por rota. Faça o upgrade para o PRO para ter paradas ilimitadas!");
+        return; // Para a função aqui e não adiciona o novo campo
+    }
+
     const div = document.createElement("div");
     div.className = "parada-grupo";
     const input = document.createElement("input");
@@ -203,6 +213,42 @@ function criarNovaParada() {
     labelCam.className = "btn-camera";
     labelCam.htmlFor = idUnico;
     labelCam.innerText = "📸";
+
+    // TRAVA DE SEGURANÇA NA CÂMERA (TESSERACT)
+    labelCam.onclick = (e) => {
+        if (!dadosUsuario || dadosUsuario.plano !== "pro") {
+            e.preventDefault(); 
+            alert("📸 Recurso VIP: A leitura de endereço por foto é exclusiva do plano PRO!");
+        }
+    };
+
+    const inputFoto = document.createElement("input");
+    inputFoto.type = "file";
+    inputFoto.id = idUnico;
+    inputFoto.accept = "image/*";
+    inputFoto.capture = "environment";
+    inputFoto.style.display = "none";
+
+    inputFoto.onchange = (e) => {
+        const arq = e.target.files[0];
+        if (arq) {
+            input.value = "Lendo... ⏳";
+            Tesseract.recognize(arq, 'por').then(({ data: { text } }) => {
+                input.value = text.substring(0, 45);
+                input.focus();
+            });
+        }
+    };
+
+    const btnRemover = document.createElement("button");
+    btnRemover.innerText = "×";
+    btnRemover.className = "btn-remover-parada";
+    btnRemover.onclick = () => containerParadas.removeChild(div);
+
+    div.append(input, labelCam, inputFoto, btnRemover);
+    containerParadas.appendChild(div);
+    configurarAutocomplete(input);
+}
 
     // TRAVA DE SEGURANÇA NA CÂMERA (TESSERACT)
     labelCam.onclick = (e) => {
