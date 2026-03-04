@@ -35,4 +35,102 @@
 
         <div id="box-cadastro" style="display:none;">
             <input type="text" id="nome" placeholder="Nome Completo">
-            <input
+            <input type="number" id="celular" placeholder="Celular com DDD">
+            <input type="email" id="c-email" placeholder="E-mail">
+            <input type="password" id="c-senha" placeholder="Senha (mín. 6 dígitos)">
+            <button id="btnSalvar">Criar Conta</button>
+            <p onclick="alternar()" style="cursor:pointer; color: blue;">Já tem conta? Entre</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // COLOQUE SUAS CHAVES AQUI:
+        const firebaseConfig = {
+            apiKey: "AIzaSyBceowtEvmh9YJTLpeGR2rYnOSjmXRjH_U",
+            authDomain: "roturbo.firebaseapp.com",
+            projectId: "roturbo",
+            storageBucket: "roturbo.firebasestorage.app",
+            messagingSenderId: "356395708767",
+            appId: "1:356395708767:web:4b4bb608ef29ee2a67c6ea",
+            measurementId: "G-HPRKEGBZK3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Lógica de Cadastro
+        document.getElementById('btnSalvar').onclick = async () => {
+            const nome = document.getElementById('nome').value;
+            const cel = document.getElementById('celular').value;
+            const email = document.getElementById('c-email').value;
+            const senha = document.getElementById('c-senha').value;
+
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, senha);
+                await setDoc(doc(db, "usuarios", cred.user.uid), {
+                    nome: nome,
+                    celular: cel,
+                    email: email,
+                    plano: "gratis", // Já define o plano inicial no banco de dados
+                    status: "ativo"
+                });
+                window.location.href = "index.html";
+            } catch (e) { alert("Erro: " + e.message); }
+        };
+
+        // Lógica de Login
+        document.getElementById('btnEntrar').onclick = async () => {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, senha);
+                window.location.href = "index.html";
+            } catch (e) { alert("Dados incorretos!"); }
+        };
+    </script>
+    <script>
+        function alternar() {
+            const login = document.getElementById('box-login');
+            const cad = document.getElementById('box-cadastro');
+            login.style.display = login.style.display === 'none' ? 'block' : 'none';
+            cad.style.display = cad.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+
+    <script>
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Impede o Chrome de mostrar o aviso padrão sozinho
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Cria o nosso banner personalizado
+            const banner = document.createElement('div');
+            banner.style = "background: #007bff; color: #fff; padding: 18px; text-align: center; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9999; cursor: pointer; font-weight: bold; box-shadow: 0 -4px 10px rgba(0,0,0,0.2); font-size: 16px;";
+            banner.innerText = "📲 Instale o App Roturbo no seu celular!";
+            
+            document.body.appendChild(banner);
+            
+            // Quando o usuário clicar no banner
+            banner.onclick = () => { 
+                banner.remove(); // Esconde o banner
+                deferredPrompt.prompt(); // Mostra a tela de instalação oficial do celular
+                
+                // Limpa a variável
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Usuário aceitou a instalação do PWA');
+                    }
+                    deferredPrompt = null;
+                });
+            };
+        });
+    </script>
+</body>
+</html>
