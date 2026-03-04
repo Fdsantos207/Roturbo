@@ -16,20 +16,37 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 let usuarioLogado = null;
+let dadosUsuario = null; // NOVA VARIÁVEL: Guarda os dados do banco (incluindo o plano)
 
 let mapa;
 let directionsService;
 let directionsRenderer;
 
-// --- VERIFICAÇÃO DE LOGIN ---
+// --- VERIFICAÇÃO DE LOGIN E BLOQUEIO VISUAL ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         usuarioLogado = user;
         const docRef = doc(db, "usuarios", user.uid);
         const docSnap = await getDoc(docRef);
+        
         if (docSnap.exists()) {
+            dadosUsuario = docSnap.data(); // Salva se é pro ou gratis
+            
+            // Atualiza o nome e a etiqueta de plano no menu lateral
             const pPerfil = document.querySelector(".menu-perfil p");
-            if (pPerfil) pPerfil.innerText = `Olá, ${docSnap.data().nome}!`;
+            if (pPerfil) {
+                const planoTexto = dadosUsuario.plano === "pro" ? "⭐ Plano PRO" : "Plano Grátis";
+                const corPlano = dadosUsuario.plano === "pro" ? "#ffc107" : "#6c757d";
+                pPerfil.innerHTML = `Olá, ${dadosUsuario.nome || 'Motorista'}!<br><small style="color: ${corPlano}; font-weight: bold;">${planoTexto}</small>`;
+            }
+
+            // Coloca os cadeados nos menus se NÃO for PRO
+            if (dadosUsuario.plano !== "pro") {
+                const linkKM = document.querySelector('.menu-links a:nth-child(2)'); // Histórico KM
+                const linkFinanceiro = document.querySelector('.menu-links a:nth-child(3)'); // Financeiro
+                if (linkKM && !linkKM.innerText.includes("🔒")) linkKM.innerText += " 🔒";
+                if (linkFinanceiro && !linkFinanceiro.innerText.includes("🔒")) linkFinanceiro.innerText += " 🔒";
+            }
         }
     } else {
         window.location.href = "login.html";
@@ -75,6 +92,12 @@ window.voltarParaMapa = () => {
 
 // --- LOGICA FINANCEIRA PROFISSIONAL (MEU CORRE) ---
 async function abrirFinanceiro() {
+    // TRAVA DE SEGURANÇA: Bloqueia a execução se não for PRO
+    if (!dadosUsuario || dadosUsuario.plano !== "pro") {
+        alert("🔒 Recurso VIP: A Gestão do Corre é exclusiva para motoristas PRO. Faça o upgrade para acessar!");
+        return; // O código para de rodar aqui e não abre a aba
+    }
+
     resetarTelas();
     document.getElementById("aba-financeiro").style.display = "block";
     carregarResumoFinanceiro();
@@ -129,6 +152,12 @@ async function carregarResumoFinanceiro() {
 
 // --- LÓGICA DE KM RODADOS ---
 async function carregarHistorico() {
+    // TRAVA DE SEGURANÇA: Bloqueia a execução se não for PRO
+    if (!dadosUsuario || dadosUsuario.plano !== "pro") {
+        alert("🔒 Recurso VIP: O Histórico de KM é exclusivo para motoristas PRO. Faça o upgrade para acessar!");
+        return; // O código para de rodar aqui e não abre a aba
+    }
+
     resetarTelas();
     document.getElementById("aba-historico").style.display = "block";
     const lista = document.getElementById("lista-historico");
@@ -174,6 +203,14 @@ function criarNovaParada() {
     labelCam.className = "btn-camera";
     labelCam.htmlFor = idUnico;
     labelCam.innerText = "📸";
+
+    // TRAVA DE SEGURANÇA NA CÂMERA (TESSERACT)
+    labelCam.onclick = (e) => {
+        if (!dadosUsuario || dadosUsuario.plano !== "pro") {
+            e.preventDefault(); // Impede o celular de abrir a galeria ou câmera
+            alert("📸 Recurso VIP: A leitura de endereço por foto é exclusiva do plano PRO!");
+        }
+    };
 
     const inputFoto = document.createElement("input");
     inputFoto.type = "file";
