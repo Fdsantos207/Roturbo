@@ -184,23 +184,19 @@ async function carregarHistorico() {
     } catch (e) { console.error(e); }
 }
 
-// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA (COM LIMITE PARA GRÁTIS) ---
+// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA (COM VOZ E CÂMERA VIP) ---
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
-    
-    // MÉTODO MAIS SEGURO: Conta exatamente quantos itens existem dentro do container
     const numeroDeParadasAtuais = containerParadas.children.length;
 
-    // Verifica de forma absoluta se o usuário tem a tag "pro"
     let isPro = false;
     if (dadosUsuario && dadosUsuario.plano === "pro") {
         isPro = true;
     }
 
-    // TRAVA DE SEGURANÇA: Se NÃO for PRO e tentar passar de 5 paradas (tentar colocar a 6ª)
     if (isPro === false && numeroDeParadasAtuais >= 5) {
         alert("🔒 Limite Atingido: O plano Grátis permite otimizar até 5 paradas por rota. Faça o upgrade para o PRO para ter paradas ilimitadas!");
-        return; // O return faz o código parar aqui e não desenha a nova parada
+        return; 
     }
 
     const div = document.createElement("div");
@@ -210,13 +206,54 @@ function criarNovaParada() {
     input.className = "input-parada";
     input.placeholder = "Endereço...";
 
+    // --- BOTÃO DE MICROFONE (VOZ) ---
+    const btnVoz = document.createElement("button");
+    btnVoz.innerText = "🎤";
+    btnVoz.className = "btn-microfone";
+    btnVoz.type = "button";
+    
+    btnVoz.onclick = () => {
+        if (isPro === false) {
+            alert("🎤 Recurso VIP: A digitação por voz é exclusiva do plano PRO!");
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Seu navegador ou celular não suporta reconhecimento de voz nativo.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        
+        recognition.onstart = () => {
+            input.placeholder = "Ouvindo... 🔴";
+            btnVoz.style.backgroundColor = "#ef4444";
+        };
+
+        recognition.onresult = (event) => {
+            input.value = event.results[0][0].transcript;
+            btnVoz.style.backgroundColor = "#3b82f6";
+            input.focus(); // Foca no campo para o Google Maps preencher
+        };
+
+        recognition.onerror = () => {
+            input.placeholder = "Endereço...";
+            btnVoz.style.backgroundColor = "#3b82f6";
+            alert("Não conseguimos ouvir. Tente novamente.");
+        };
+
+        recognition.start();
+    };
+
+    // --- BOTÃO CÂMERA (TESSERACT) ---
     const idUnico = "foto-" + Date.now();
     const labelCam = document.createElement("label");
     labelCam.className = "btn-camera";
     labelCam.htmlFor = idUnico;
     labelCam.innerText = "📸";
 
-    // TRAVA DE SEGURANÇA NA CÂMERA (TESSERACT)
     labelCam.onclick = (e) => {
         if (isPro === false) {
             e.preventDefault(); 
@@ -242,12 +279,13 @@ function criarNovaParada() {
         }
     };
 
+    // --- BOTÃO DE REMOVER ---
     const btnRemover = document.createElement("button");
     btnRemover.innerText = "×";
     btnRemover.className = "btn-remover-parada";
     btnRemover.onclick = () => containerParadas.removeChild(div);
 
-    div.append(input, labelCam, inputFoto, btnRemover);
+    div.append(input, btnVoz, labelCam, inputFoto, btnRemover);
     containerParadas.appendChild(div);
     configurarAutocomplete(input);
 }
