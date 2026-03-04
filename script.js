@@ -374,13 +374,3 @@ function gerarBotoesDeNavegacao(result) {
         divLista.appendChild(btn);
     });
 }
-
-// --- PWA ---
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    const banner = document.createElement('div');
-    banner.style = "background: #000; color: #fff; padding: 15px; text-align: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 999; cursor: pointer; border-bottom: 2px solid #007bff; font-weight: bold;";
-    banner.innerText = "📲 Instalar Roturbo";
-    document.body.appendChild(banner);
-    banner.onclick = () => { banner.remove(); e.prompt(); };
-});
