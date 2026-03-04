@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="style.css">
     
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <script>
       if ('serviceWorker' in navigator) {
@@ -76,7 +76,7 @@
                     nome: nome,
                     celular: cel,
                     email: email,
-                    plano: "gratis", // Já define o plano inicial no banco de dados
+                    plano: "gratis", 
                     status: "ativo"
                 });
                 window.location.href = "index.html";
@@ -106,26 +106,25 @@
         let deferredPrompt;
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Impede o Chrome de mostrar o aviso padrão sozinho
             e.preventDefault();
             deferredPrompt = e;
             
-            // Cria o nosso banner personalizado
             const banner = document.createElement('div');
-            banner.style = "background: #007bff; color: #fff; padding: 18px; text-align: center; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9999; cursor: pointer; font-weight: bold; box-shadow: 0 -4px 10px rgba(0,0,0,0.2); font-size: 16px;";
-            banner.innerText = "📲 Instale o App Roturbo no seu celular!";
+            
+            // ESTILO NOVO: Pílula flutuante, branca, com sombra suave no topo da tela
+            banner.style = "background: #ffffff; color: #333; padding: 12px 16px; text-align: center; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 350px; z-index: 9999; cursor: pointer; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 14px; border: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: center; gap: 8px;";
+            
+            banner.innerHTML = "<strong>📲 Baixar o App Roturbo</strong>";
             
             document.body.appendChild(banner);
             
-            // Quando o usuário clicar no banner
             banner.onclick = () => { 
-                banner.remove(); // Esconde o banner
-                deferredPrompt.prompt(); // Mostra a tela de instalação oficial do celular
+                banner.remove(); 
+                deferredPrompt.prompt(); 
                 
-                // Limpa a variável
                 deferredPrompt.userChoice.then((choiceResult) => {
                     if (choiceResult.outcome === 'accepted') {
-                        console.log('Usuário aceitou a instalação do PWA');
+                        console.log('Usuário aceitou a instalação');
                     }
                     deferredPrompt = null;
                 });
