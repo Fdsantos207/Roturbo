@@ -88,13 +88,12 @@ window.voltarParaMapa = () => {
     document.getElementById("painel-principal").style.display = "block";
 };
 
-// --- LOGICA FINANCEIRA PROFISSIONAL (MEU CORRE) ---
+// --- LOGICA FINANCEIRA E HISTÓRICO ---
 async function abrirFinanceiro() {
     if (!dadosUsuario || dadosUsuario.plano !== "pro") {
         alert("🔒 Recurso VIP: A Gestão do Corre é exclusiva para motoristas PRO. Faça o upgrade para acessar!");
         return; 
     }
-
     resetarTelas();
     document.getElementById("aba-financeiro").style.display = "block";
     carregarResumoFinanceiro();
@@ -120,11 +119,9 @@ async function carregarResumoFinanceiro() {
             const d = doc.data();
             somaGanhos += d.ganho;
             somaGastos += d.gasto;
-
             const div = document.createElement("div");
             div.className = "item-financeiro";
             div.style = "display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; background: #fff;";
-            
             const icones = { combustivel: "⛽", alimentacao: "🍔", manutencao: "🛠️", outros: "📦" };
             const categoriaIcone = icones[d.categoria] || "💰";
 
@@ -140,20 +137,17 @@ async function carregarResumoFinanceiro() {
             `;
             lista.appendChild(div);
         });
-
         ganhosTxt.innerText = `R$ ${somaGanhos.toFixed(2)}`;
         gastosTxt.innerText = `R$ ${somaGastos.toFixed(2)}`;
         saldoTxt.innerText = `R$ ${(somaGanhos - somaGastos).toFixed(2)}`;
     } catch (e) { console.error(e); }
 }
 
-// --- LÓGICA DE KM RODADOS ---
 async function carregarHistorico() {
     if (!dadosUsuario || dadosUsuario.plano !== "pro") {
         alert("🔒 Recurso VIP: O Histórico de KM é exclusivo para motoristas PRO. Faça o upgrade para acessar!");
         return; 
     }
-
     resetarTelas();
     document.getElementById("aba-historico").style.display = "block";
     const lista = document.getElementById("lista-historico");
@@ -184,7 +178,7 @@ async function carregarHistorico() {
     } catch (e) { console.error(e); }
 }
 
-// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA (COM VOZ E CÂMERA VIP) ---
+// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA (COM VOZ, CÂMERA E RELÓGIO) ---
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const numeroDeParadasAtuais = containerParadas.children.length;
@@ -201,12 +195,30 @@ function criarNovaParada() {
 
     const div = document.createElement("div");
     div.className = "parada-grupo";
+    
+    // Campo de Endereço
     const input = document.createElement("input");
     input.type = "text";
     input.className = "input-parada";
     input.placeholder = "Endereço...";
 
-    // --- BOTÃO DE MICROFONE (VOZ) ---
+    // --- NOVO: Campo de Janela de Tempo ---
+    const inputTempo = document.createElement("input");
+    inputTempo.type = "time";
+    inputTempo.className = "input-tempo";
+    inputTempo.title = "Horário Limite de Chegada";
+
+    // Trava do tempo para usuário grátis
+    if (isPro === false) {
+        inputTempo.onclick = (e) => {
+            e.preventDefault(); 
+            inputTempo.blur(); // Tira o foco para ele não conseguir abrir o relógio
+            alert("⏰ Recurso VIP: Agendar o horário limite de chegada é exclusivo do plano PRO!");
+        };
+        inputTempo.readOnly = true;
+    }
+
+    // Botão Microfone (Voz)
     const btnVoz = document.createElement("button");
     btnVoz.innerText = "🎤";
     btnVoz.className = "btn-microfone";
@@ -230,24 +242,27 @@ function criarNovaParada() {
         recognition.onstart = () => {
             input.placeholder = "Ouvindo... 🔴";
             btnVoz.style.backgroundColor = "#ef4444";
+            btnVoz.style.color = "#fff";
         };
 
         recognition.onresult = (event) => {
             input.value = event.results[0][0].transcript;
-            btnVoz.style.backgroundColor = "#3b82f6";
-            input.focus(); // Foca no campo para o Google Maps preencher
+            btnVoz.style.backgroundColor = "transparent";
+            btnVoz.style.color = "#64748b";
+            input.focus(); 
         };
 
         recognition.onerror = () => {
             input.placeholder = "Endereço...";
-            btnVoz.style.backgroundColor = "#3b82f6";
+            btnVoz.style.backgroundColor = "transparent";
+            btnVoz.style.color = "#64748b";
             alert("Não conseguimos ouvir. Tente novamente.");
         };
 
         recognition.start();
     };
 
-    // --- BOTÃO CÂMERA (TESSERACT) ---
+    // Botão Câmera (Tesseract)
     const idUnico = "foto-" + Date.now();
     const labelCam = document.createElement("label");
     labelCam.className = "btn-camera";
@@ -279,13 +294,14 @@ function criarNovaParada() {
         }
     };
 
-    // --- BOTÃO DE REMOVER ---
+    // Botão de Remover (X)
     const btnRemover = document.createElement("button");
     btnRemover.innerText = "×";
     btnRemover.className = "btn-remover-parada";
     btnRemover.onclick = () => containerParadas.removeChild(div);
 
-    div.append(input, btnVoz, labelCam, inputFoto, btnRemover);
+    // Coloca todos os elementos dentro da linha na ordem certa
+    div.append(inputTempo, input, btnVoz, labelCam, inputFoto, btnRemover);
     containerParadas.appendChild(div);
     configurarAutocomplete(input);
 }
@@ -363,15 +379,25 @@ document.addEventListener("DOMContentLoaded", function() {
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 });
 
-// --- ROTA E NAVEGAÇÃO ---
+// --- ROTA E NAVEGAÇÃO COM RASTREIO DE TEMPO ---
 async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
-    const inputs = document.querySelectorAll(".input-parada");
+    
+    const inputsEnderecos = document.querySelectorAll(".input-parada");
+    const inputsTempos = document.querySelectorAll(".input-tempo"); // Captura os relógios
+
     if (!origem || !destino) return alert("Origem e Destino são obrigatórios!");
 
     let waypoints = [];
-    inputs.forEach(i => { if (i.value) waypoints.push({ location: i.value, stopover: true }); });
+    let temposOriginais = []; // Lista para gravar a ordem original dos horários
+
+    inputsEnderecos.forEach((input, index) => { 
+        if (input.value) { 
+            waypoints.push({ location: input.value, stopover: true }); 
+            temposOriginais.push(inputsTempos[index].value || "Sem prazo"); // Grava o horário correspondente
+        } 
+    });
 
     const request = {
         origin: origem,
@@ -392,18 +418,36 @@ async function calcularRotaOtimizada() {
                     distancia: km, data: new Date(), origem, destino
                 });
             }
-            gerarBotoesDeNavegacao(result);
+            
+            // Pega a nova ordem misturada pelo Google e gera os botões com os prazos corretos
+            const ordemOtimizada = result.routes[0].waypoint_order;
+            gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada);
         }
     });
 }
 
-function gerarBotoesDeNavegacao(result) {
+function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
     const divLista = document.getElementById("lista-paradas");
     divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>";
+    
     result.routes[0].legs.forEach((leg, i) => {
+        let prazoTexto = "";
+        
+        // Verifica se é uma parada ou o destino final (o último "leg" é a chegada ao destino)
+        if (i < ordemOtimizada.length) {
+            const indiceOriginal = ordemOtimizada[i]; // Acha de onde essa parada veio
+            const prazo = temposOriginais[indiceOriginal]; // Pega o horário original dela
+            
+            if (prazo !== "Sem prazo") {
+                prazoTexto = ` (Até ${prazo})`;
+            }
+        } else {
+            prazoTexto = " (Destino Final)";
+        }
+
         const btn = document.createElement("a");
         btn.className = "btn-navegar";
-        btn.innerText = `Navegar para Parada ${i+1} 🚗`;
+        btn.innerText = `Navegar para Parada ${i+1} 🚗 ${prazoTexto}`;
         btn.href = `geo:0,0?q=${encodeURIComponent(leg.end_address)}`;
         btn.onclick = function() {
             this.classList.add("visitado");
