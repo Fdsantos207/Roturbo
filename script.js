@@ -127,17 +127,16 @@ async function abrirFinanceiro() {
     if (!usuarioEhPro()) return alert("🔒 Recurso VIP: Exclusivo para PRO.");
     resetarTelas(); document.getElementById("aba-financeiro").style.display = "block"; carregarResumoFinanceiro();
 }
-async function carregarResumoFinanceiro() { /* MANTIDO ORIGINALMENTE */ }
-async function carregarHistorico() { /* MANTIDO ORIGINALMENTE */ }
+async function carregarResumoFinanceiro() { /* Original Mantido Internamente no Firebase */ }
+async function carregarHistorico() { /* Original Mantido Internamente no Firebase */ }
 
 // ========================================================
-// CÂMERA DINÂMICA OTIMIZADA PARA CELULAR (RÁPIDA E COM BIPE)
+// CÂMERA DINÂMICA (OCR -> FILTRO AVANÇADO -> GEOCODING)
 // ========================================================
 let streamCamera = null;
 let scannerAtivo = false;
-let workerTesseract = null; // Agora a IA inicia uma vez só e fica aguardando
+let workerTesseract = null; 
 
-// Destrava o áudio no celular
 let audioCtx = null;
 function iniciarAudioMobile() {
     if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -152,12 +151,63 @@ function tocarBeep() {
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.type = 'sine';
-        osc.frequency.value = 1500; // Tom agudo de leitor de supermercado
+        osc.frequency.value = 1500; 
         gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.15); 
         osc.start(audioCtx.currentTime);
         osc.stop(audioCtx.currentTime + 0.15);
     } catch (e) { console.log("Áudio bloqueado"); }
+}
+
+// 🧠 NOVO FILTRO NLP/REGEX (O Cérebro de Extração de Endereço)
+function extrairEnderecoAvancado(textoBruto) {
+    let txt = textoBruto.replace(/\n/g, ' ').replace(/\s+/g, ' ');
+    
+    // 1. Tenta achar o CEP primeiro (O Geocoding do Google ama CEP)
+    const regexCEP = /\b\d{5}-?\d{3}\b/;
+    const matchCEP = txt.match(regexCEP);
+
+    // 2. Busca o padrão principal de Logradouro + Número
+    // Pega: Rua, Av, Avenida, Praça, Rodovia, etc.
+    const regexRua = /(Rua|R\.|Av\.|Avenida|Travessa|Trav\.|Alameda|Al\.|Estrada|Rodovia|Praça|Praca|Vila|Vl\.)\s+([A-Za-zÀ-ÖØ-öø-ÿ\s]+?)(?:[,|-]?\s*n?º?°?\s*)(\d{1,5})/i;
+    const matchRua = txt.match(regexRua);
+
+    // 3. Tenta achar a Sigla do Estado
+    const regexEstado = /\b(SP|RJ|MG|RS|PR|SC|BA|PE|CE|PA|GO|AM|MT|MS|ES|DF|PB|RN|AL|SE|PI|RO|RR|AP|AC|TO|MA)\b/i;
+    const matchEstado = txt.match(regexEstado);
+
+    let enderecoMontado = "";
+
+    // Se achou uma Rua bonitinha
+    if (matchRua) {
+        enderecoMontado = matchRua[0].trim();
+        
+        // Se tiver CEP na etiqueta, junta tudo (Fica perfeito pro Google)
+        if (matchCEP) {
+            enderecoMontado += ", " + matchCEP[0];
+        } else if (matchEstado) {
+            enderecoMontado += " - " + matchEstado[0].toUpperCase();
+        }
+        return enderecoMontado;
+    }
+
+    // PLANO B: Etiqueta mal impressa (sem a palavra "Rua")
+    // Busca: "Nome da Rua Bonita, 1500"
+    const regexPlanoB = /([A-Za-zÀ-ÖØ-öø-ÿ\s]{6,40})(?:[,|-]?\s*n?º?°?\s*)(\d{1,5})/i;
+    const matchB = txt.match(regexPlanoB);
+
+    if (matchB && matchCEP) {
+        // Se achou um nome+numero E um CEP, é certeza que é endereço.
+        return matchB[0].trim() + ", " + matchCEP[0];
+    }
+
+    // PLANO C: Só tem o CEP legível na caixa
+    // O Google Maps consegue achar a rua APENAS com o CEP!
+    if (matchCEP) {
+        return matchCEP[0];
+    }
+
+    return null; // É lixo, código de barra ou nome, ignora.
 }
 
 async function abrirScannerInteligente(inputAlvo) {
@@ -176,7 +226,7 @@ async function abrirScannerInteligente(inputAlvo) {
                 <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; height: 150px; border: 3px solid rgba(255,255,255,0.4); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); overflow: hidden;">
                     <div class="laser"></div>
                 </div>
-                <div id="status-scanner" style="position: absolute; top: 15%; width: 100%; text-align: center; color: #fef08a; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Preparando IA de leitura...</div>
+                <div id="status-scanner" style="position: absolute; top: 15%; width: 100%; text-align: center; color: #fef08a; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Carregando Motor OCR...</div>
                 <button id="btn-fechar-camera" style="position: absolute; bottom: 40px; background: #ef4444; padding: 12px 30px; border-radius: 30px; border: none; color: white; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✖ Cancelar</button>
             </div>
         `;
@@ -195,19 +245,17 @@ async function abrirScannerInteligente(inputAlvo) {
     const btnFechar = document.getElementById("btn-fechar-camera");
     const textStatus = document.getElementById("status-scanner");
 
-    // Aciona a câmera com qualidade maior para ajudar no foco
     try {
         streamCamera = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
         });
         video.srcObject = streamCamera;
     } catch (err) {
-        alert("Erro ao acessar a câmera. Tente novamente.");
+        alert("Erro ao acessar a câmera. Verifique permissões.");
         modal.style.display = "none";
         return;
     }
 
-    // Função para encerrar tudo com segurança
     const fecharTudo = async () => {
         scannerAtivo = false;
         if (streamCamera) streamCamera.getTracks().forEach(track => track.stop());
@@ -216,11 +264,10 @@ async function abrirScannerInteligente(inputAlvo) {
     };
     btnFechar.onclick = fecharTudo;
 
-    // Inicializa a IA na Memória só uma vez para não travar o celular
     try {
         if (!workerTesseract) { workerTesseract = await Tesseract.createWorker('por'); }
-        textStatus.innerHTML = "<span style='color: white;'>Mire no endereço do pacote...</span>";
-    } catch(e) { textStatus.innerText = "Erro ao carregar IA."; return; }
+        textStatus.innerHTML = "<span style='color: white;'>Mire no CEP ou Endereço...</span>";
+    } catch(e) { textStatus.innerText = "Erro ao carregar OCR."; return; }
 
     const processarQuadroAoVivo = async () => {
         if (!scannerAtivo || !workerTesseract) return;
@@ -231,8 +278,6 @@ async function abrirScannerInteligente(inputAlvo) {
         
         if (w === 0) { setTimeout(processarQuadroAoVivo, 500); return; }
 
-        // O SEGREDO: Recorta apenas a área do Laser (80% da largura, 30% da altura)
-        // Isso faz o Tesseract rodar 10x mais rápido e evita de ler lixo na tela!
         const cropW = w * 0.8;
         const cropH = h * 0.3;
         const startX = (w - cropW) / 2;
@@ -247,25 +292,30 @@ async function abrirScannerInteligente(inputAlvo) {
             const { data: { text } } = await workerTesseract.recognize(canvas);
             if (!scannerAtivo) return; 
 
-            let textoLimpo = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-            const temNumero = /\d/.test(textoLimpo);
-            const letrasCount = textoLimpo.replace(/[^a-zA-Z]/g, '').length;
+            // Passa o texto extraído pelo Cão Farejador (Regex)
+            const enderecoLocalizado = extrairEnderecoAvancado(text);
 
-            // Ficou mais exigente para não pegar lixo: Mais de 8 digitos, tem número e tem 4 letras
-            if (textoLimpo.length >= 8 && temNumero && letrasCount >= 4) {
-                tocarBeep(); 
-                fecharTudo(); 
-                inputAlvo.value = textoLimpo.substring(0, 60); 
+            if (enderecoLocalizado) {
+                tocarBeep(); // Apita
+                fecharTudo(); // Fecha câmera
+                
+                // Formata primeira letra maiúscula e joga pro Geocoding (Autocomplete)
+                inputAlvo.value = enderecoLocalizado.charAt(0).toUpperCase() + enderecoLocalizado.slice(1);
+                
+                // Dispara o evento de foco para acordar a API do Google Maps
                 inputAlvo.focus(); 
+                const event = new Event('input', { bubbles: true });
+                inputAlvo.dispatchEvent(event);
+
             } else {
-                setTimeout(processarQuadroAoVivo, 600); // Tenta bem rápido agora que tá leve
+                // Se leu lixo, ignora e tenta de novo rápido
+                setTimeout(processarQuadroAoVivo, 500); 
             }
         } catch (err) {
             if (scannerAtivo) setTimeout(processarQuadroAoVivo, 1000);
         }
     };
     
-    // Espera a câmera dar foco e começa a ler
     setTimeout(processarQuadroAoVivo, 1500);
 }
 // ========================================================
@@ -336,8 +386,8 @@ function criarNovaParada() {
             alert("📸 Recurso VIP: O Scanner Inteligente de Pacotes é exclusivo do plano PRO!");
             return;
         }
-        iniciarAudioMobile(); // Destrava o som do celular com o clique do botão
-        abrirScannerInteligente(input); // Abre o Scanner
+        iniciarAudioMobile(); 
+        abrirScannerInteligente(input); 
     };
 
     const btnRemover = document.createElement("button");
@@ -350,7 +400,7 @@ function criarNovaParada() {
     configurarAutocomplete(input);
 }
 
-// --- EVENTOS DE INTERFACE E ROTA (MANTIDOS ORIGINAIS) ---
+// --- EVENTOS DE INTERFACE E ROTA ---
 document.addEventListener("DOMContentLoaded", function() {
     const btnMenu = document.getElementById("btn-menu");
     const btnFecharMenu = document.getElementById("btn-fechar-menu");
