@@ -377,6 +377,9 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     setTimeout(processarQuadroAoVivo, 1500);
 }
 
+// ========================================================
+// BARRA DE PESQUISA 
+// ========================================================
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const numeroDeParadasAtuais = containerParadas.children.length;
@@ -397,6 +400,8 @@ function criarNovaParada() {
     
     const input = document.createElement("input");
     input.type = "text";
+    // ⚠️ A CLASSE ABAIXO FOI RECUPERADA! É ELA QUE FAZ A ROTA FUNCIONAR ⚠️
+    input.className = "input-parada"; 
     input.placeholder = "Toque para adicionar";
 
     const btnCam = document.createElement("button");
@@ -484,9 +489,6 @@ document.addEventListener("DOMContentLoaded", function() {
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 });
 
-// ========================================================
-// ROTA E BOTÕES INDIVIDUAIS COM O LINK CORRETO DO MAPS
-// ========================================================
 async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
@@ -545,16 +547,16 @@ function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
             if (prazo !== "Sem prazo") { prazoTexto = ` (Até ${prazo})`; }
         } else { prazoTexto = " (Destino Final)"; }
 
-        // A MÁGICA ESTÁ AQUI: Link oficial do Google Maps garantindo que vai traçar a rota pro endereço certo!
+        // A MÁGICA DA NAVEGAÇÃO INDIVIDUAL À PROVA DE FALHAS
+        // Puxa o GPS nativo do celular apontando direto pra parada que ele clicou
         const linkMapsOficial = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(leg.end_address)}&travelmode=driving`;
 
         const btn = document.createElement("a");
         btn.className = "btn-navegar";
         btn.innerText = `Navegar para Parada ${i+1} 🚗 ${prazoTexto}`;
         btn.href = linkMapsOficial;
-        btn.target = "_blank"; // Abre o mapa sem fechar o seu app
+        btn.target = "_blank";
         
-        // Mantém a funcionalidade de clicar, riscar e mudar o texto para "Finalizada"
         btn.onclick = function() { 
             this.classList.add("visitado"); 
             this.innerText = `✅ Parada ${i+1} Finalizada`; 
