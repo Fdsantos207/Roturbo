@@ -122,8 +122,8 @@ async function abrirFinanceiro() {
     if (!usuarioEhPro()) return alert("🔒 Recurso VIP: Exclusivo para PRO.");
     resetarTelas(); document.getElementById("aba-financeiro").style.display = "block"; carregarResumoFinanceiro();
 }
-async function carregarResumoFinanceiro() { /* Original Mantido Internamente */ }
-async function carregarHistorico() { /* Original Mantido Internamente */ }
+async function carregarResumoFinanceiro() { /* Mantido */ }
+async function carregarHistorico() { /* Mantido */ }
 
 let streamCamera = null;
 let scannerAtivo = false;
@@ -227,9 +227,6 @@ function mostrarResultadoBusca(indice, lido) {
     document.body.appendChild(div);
 }
 
-// ========================================================
-// DESIGN DA CÂMERA (COM BANNER ESTILO APP)
-// ========================================================
 async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     let modal = document.getElementById("modal-scanner");
     let emPausa = false; 
@@ -380,9 +377,6 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     setTimeout(processarQuadroAoVivo, 1500);
 }
 
-// ========================================================
-// BARRA DE PESQUISA (LAYOUT GOOGLE MAPS)
-// ========================================================
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const numeroDeParadasAtuais = containerParadas.children.length;
@@ -465,7 +459,6 @@ function criarNovaParada() {
     configurarAutocomplete(input);
 }
 
-// --- EVENTOS DE INTERFACE E ROTA ---
 document.addEventListener("DOMContentLoaded", function() {
     const btnMenu = document.getElementById("btn-menu");
     const btnFecharMenu = document.getElementById("btn-fechar-menu");
@@ -492,7 +485,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // ========================================================
-// INTEGRAÇÃO DE ROTA MESTRE (MAPS UNIVERSAL)
+// ROTA E BOTÕES INDIVIDUAIS COM O LINK CORRETO DO MAPS
 // ========================================================
 async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
@@ -504,7 +497,6 @@ async function calcularRotaOtimizada() {
 
     let waypoints = []; let temposOriginais = [];
 
-    // Preenche as paradas intermediárias (se o motorista as tiver adicionado no botão azul)
     inputsEnderecos.forEach((input, index) => { 
         if (input.value) { 
             waypoints.push({ location: input.value, stopover: true }); 
@@ -524,58 +516,27 @@ async function calcularRotaOtimizada() {
                 await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), { distancia: km, data: new Date(), origem, destino });
             }
             const ordemOtimizada = result.routes[0].waypoint_order;
-            
-            // Passamos a origem, destino e waypoints para podermos criar o Link Universal
-            gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada, origem, destino, waypoints);
+            gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada);
         }
     });
 }
 
-function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada, origemOriginal, destinoOriginal, waypointsOriginais) {
+function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
     const divLista = document.getElementById("lista-paradas");
     divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>";
     
     enderecosOtimizadosGlobal = result.routes[0].legs.map(leg => leg.end_address);
 
-    // 1. Botão do Localizador de Pacotes
     const btnBusca = document.createElement("button");
     btnBusca.innerHTML = "📦 Bipar e Localizar Pacote";
-    btnBusca.style = "background: linear-gradient(90deg, #f59e0b, #d97706); color: white; padding: 18px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-bottom: 15px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 10px;";
+    btnBusca.style = "background: linear-gradient(90deg, #f59e0b, #d97706); color: white; padding: 18px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-bottom: 20px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 10px;";
     btnBusca.onclick = () => {
         if (!usuarioEhPro()) return alert("🔒 Recurso VIP: O Localizador de Pacotes é exclusivo do plano PRO!");
         iniciarAudioMobile();
         abrirScannerInteligente(null, 'busca'); 
     };
     divLista.appendChild(btnBusca);
-
-    // ==========================================
-    // 2. BOTÃO MESTRE (Abre a Rota Inteira no GPS)
-    // ==========================================
-    let waypointsUrl = "";
-    if (waypointsOriginais && waypointsOriginais.length > 0) {
-        // Pega os pontos intermediários e organiza-os na ordem que a IA decidiu que é mais rápida
-        const waypointsOrdenados = ordemOtimizada.map(idx => waypointsOriginais[idx].location);
-        waypointsUrl = "&waypoints=" + waypointsOrdenados.map(w => encodeURIComponent(w)).join('|');
-    }
-
-    // Cria o Link Oficial do Google Maps que não falha no telemóvel
-    const linkRotasGoogle = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origemOriginal)}&destination=${encodeURIComponent(destinoOriginal)}${waypointsUrl}&travelmode=driving`;
-
-    const btnNavegarCompleto = document.createElement("a");
-    btnNavegarCompleto.innerHTML = "🗺️ Abrir Rota Completa no GPS";
-    btnNavegarCompleto.href = linkRotasGoogle;
-    btnNavegarCompleto.target = "_blank"; // Abre no aplicativo nativo sem fechar o seu
-    btnNavegarCompleto.style = "display: block; background: #0f172a; color: white; padding: 18px; border-radius: 12px; font-weight: bold; text-align: center; text-decoration: none; margin-bottom: 25px; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);";
-    divLista.appendChild(btnNavegarCompleto);
     
-    // ==========================================
-    // 3. Checklist de Paradas para o Motorista
-    // ==========================================
-    const tituloChecklist = document.createElement("p");
-    tituloChecklist.innerHTML = "<strong>Checklist de Entregas:</strong> (Toque para concluir)";
-    tituloChecklist.style.color = "#64748b";
-    divLista.appendChild(tituloChecklist);
-
     result.routes[0].legs.forEach((leg, i) => {
         let prazoTexto = "";
         if (i < ordemOtimizada.length) {
@@ -584,16 +545,19 @@ function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada, origemO
             if (prazo !== "Sem prazo") { prazoTexto = ` (Até ${prazo})`; }
         } else { prazoTexto = " (Destino Final)"; }
 
-        const btn = document.createElement("button");
-        btn.innerHTML = `<strong>Parada ${i+1} ${prazoTexto}</strong><br><span style="font-size:13px; font-weight:normal;">${leg.end_address}</span>`;
-        btn.style = "background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; width: 100%; text-align: left; margin-bottom: 10px; cursor: pointer; transition: 0.3s;";
+        // A MÁGICA ESTÁ AQUI: Link oficial do Google Maps garantindo que vai traçar a rota pro endereço certo!
+        const linkMapsOficial = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(leg.end_address)}&travelmode=driving`;
+
+        const btn = document.createElement("a");
+        btn.className = "btn-navegar";
+        btn.innerText = `Navegar para Parada ${i+1} 🚗 ${prazoTexto}`;
+        btn.href = linkMapsOficial;
+        btn.target = "_blank"; // Abre o mapa sem fechar o seu app
         
-        // Quando ele entregar o pacote, ele clica aqui e o botão fica verde indicando conclusão
+        // Mantém a funcionalidade de clicar, riscar e mudar o texto para "Finalizada"
         btn.onclick = function() { 
-            this.style.backgroundColor = "#10b981"; // Verde sucesso
-            this.style.color = "white";
-            this.innerHTML = `✅ Parada ${i+1} Concluída`; 
-            this.disabled = true;
+            this.classList.add("visitado"); 
+            this.innerText = `✅ Parada ${i+1} Finalizada`; 
         };
         divLista.appendChild(btn);
     });
