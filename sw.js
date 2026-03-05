@@ -1,4 +1,4 @@
-const CACHE_NAME = 'roturbo-v2'; // Mudamos para v2 para forçar a atualização
+const CACHE_NAME = 'roturbo-v3'; // A MÁGICA ESTÁ AQUI: Mudamos para v3
 const assets = [
   '/',
   '/index.html',
@@ -7,17 +7,15 @@ const assets = [
   '/login.html'
 ];
 
-// Instala o service worker e guarda os arquivos novos
 self.addEventListener('install', event => {
+  self.skipWaiting(); // Força a instalação na hora
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(assets);
     })
   );
-  self.skipWaiting(); // Força a instalação imediata
 });
 
-// APAGA O CACHE ANTIGO (v1) QUANDO O v2 ENTRAR
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -30,7 +28,7 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Intercepta as requisições (Tenta a rede primeiro, depois o cache)
+// Network First: Tenta pegar da internet sempre que possível
 self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(event.request).catch(() => {

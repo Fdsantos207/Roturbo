@@ -42,13 +42,19 @@ onAuthStateChanged(auth, async (user) => {
         } else {
             dadosUsuario = { plano: "gratis", nome: "Motorista" };
         }
-
-        // 🔥 MASTER OVERRIDE: O passe livre do Dono (Agora à prova de letras maiúsculas)
+// 🔥 MASTER OVERRIDE: O passe livre do Dono (Blindado contra teclado de celular)
         const EMAIL_ADMIN = "fdsantos.melo@hotmail.com";
-        if (user.email && user.email.toLowerCase() === EMAIL_ADMIN) {
+        
+        // O .trim() arranca espaços vazios que o celular coloca no final da palavra
+        if (user.email && user.email.toLowerCase().trim() === EMAIL_ADMIN) {
             dadosUsuario.plano = "pro";
             dadosUsuario.nome = "Danilo (Admin)";
-            await setDoc(docRef, { nome: "Danilo (Admin)", email: user.email, plano: "pro", status: "ativo" }, { merge: true });
+            await setDoc(docRef, { 
+                nome: "Danilo (Admin)", 
+                email: user.email, 
+                plano: "pro", 
+                status: "ativo" 
+            }, { merge: true });
         }
 
         // --- LÓGICA DE TRIAL (DEGUSTAÇÃO) E REBAIXAMENTO ---
