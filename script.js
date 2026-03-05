@@ -175,31 +175,53 @@ function extrairEnderecoAvancado(textoBruto) {
     return null; 
 }
 
+// ========================================================
+// 🧠 NOVO CÉREBRO DE BUSCA (À PROVA DE ERROS)
+// ========================================================
 function buscarPacoteNaRota(enderecoLido) {
-    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\w\s]/gi, ' ');
+    // 1. Tira acentos e padroniza para letras minúsculas
+    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const buscaNorm = normalize(enderecoLido);
-    const palavrasLidas = buscaNorm.split(/\s+/).filter(p => p.length > 2 || /\d/.test(p)); 
+    
+    // 2. Extrai de forma inteligente apenas o NÚMERO DA PORTA (Ignora CEPs)
+    const textoSemCep = buscaNorm.replace(/\b\d{5}-?\d{3}\b/g, ''); // Tira o CEP se houver
+    const matchNum = textoSemCep.match(/\b\d{1,5}\b/);
+    const numeroLido = matchNum ? matchNum[0] : null;
+
+    // 3. Remove "lixo" (palavras que o Google mete em todas as paradas)
+    const palavrasLixo = ['rua', 'avenida', 'av', 'travessa', 'alameda', 'praca', 'vila', 'sao', 'paulo', 'brasil', 'sp', 'estado', 'cep', 'de', 'da', 'do', 'das', 'dos'];
+    const palavrasLidas = textoSemCep.replace(/[^\w\s]/gi, ' ').split(/\s+/).filter(p => p.length > 2 && !palavrasLixo.includes(p) && !/\d/.test(p)); 
 
     let melhorIndice = -1;
     let maiorPontuacao = 0;
 
+    // 4. Varre todas as paradas que o Google Maps gerou
     for (let i = 0; i < enderecosOtimizadosGlobal.length; i++) {
         const endAlvo = normalize(enderecosOtimizadosGlobal[i]);
         let pontuacao = 0;
         
+        // REGRA DE OURO: Se o número da porta estiver nesta morada, ganha 50 pontos logo à partida!
+        if (numeroLido && endAlvo.match(new RegExp("\\b" + numeroLido + "\\b"))) {
+            pontuacao += 50; 
+        }
+
+        // Soma pontos se os nomes peculiares da rua baterem certo
         palavrasLidas.forEach(palavra => {
             if (endAlvo.includes(palavra)) {
-                pontuacao += /\d/.test(palavra) ? 3 : 1; 
+                pontuacao += 15; 
             }
         });
 
+        // Atualiza a Parada Vencedora
         if (pontuacao > maiorPontuacao) {
             maiorPontuacao = pontuacao;
             melhorIndice = i;
         }
     }
 
-    if (maiorPontuacao < 3) { melhorIndice = -1; }
+    // Antifraude: Se a pontuação for muito baixa (não achou o número nem nomes chave), diz que não encontrou
+    if (maiorPontuacao < 15) { melhorIndice = -1; }
+    
     mostrarResultadoBusca(melhorIndice, enderecoLido);
 }
 
@@ -227,6 +249,9 @@ function mostrarResultadoBusca(indice, lido) {
     document.body.appendChild(div);
 }
 
+// ========================================================
+// DESIGN DA CÂMERA (MANTIDO)
+// ========================================================
 async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     let modal = document.getElementById("modal-scanner");
     let emPausa = false; 
@@ -377,6 +402,9 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     setTimeout(processarQuadroAoVivo, 1500);
 }
 
+// ========================================================
+// BARRA DE PESQUISA 
+// ========================================================
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const numeroDeParadasAtuais = containerParadas.children.length;
@@ -486,7 +514,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // ========================================================
-// 🌟 NOVO: O SELETOR DE MAPAS (WAZE vs GOOGLE MAPS)
+// SELETOR DE NAVEGAÇÃO E LÓGICA DE MAPAS
 // ========================================================
 function abrirSeletorNavegacao(enderecoDestino, botaoOrigem, numeroParada) {
     let modal = document.getElementById("modal-nav-app");
@@ -517,7 +545,6 @@ function abrirSeletorNavegacao(enderecoDestino, botaoOrigem, numeroParada) {
 
     modal.style.display = "flex";
     
-    // Pequeno delay para a animação de subir acontecer
     setTimeout(() => {
         document.getElementById("bs-nav-content").style.transform = "translateY(0)";
     }, 10);
@@ -529,7 +556,6 @@ function abrirSeletorNavegacao(enderecoDestino, botaoOrigem, numeroParada) {
 
     document.getElementById("btn-nav-cancelar").onclick = fecharModal;
 
-    // Função que risca o botão principal quando ele clica no mapa
     const marcarComoVisitado = () => {
         botaoOrigem.classList.add("visitado");
         botaoOrigem.innerText = `✅ Parada ${numeroParada} Finalizada`;
@@ -540,14 +566,12 @@ function abrirSeletorNavegacao(enderecoDestino, botaoOrigem, numeroParada) {
         botaoOrigem.style.boxShadow = "none";
     };
 
-    // Link Universal do Waze
     document.getElementById("btn-usar-waze").onclick = () => {
         window.open(`https://waze.com/ul?q=${encodeURIComponent(enderecoDestino)}&navigate=yes`, '_blank');
         marcarComoVisitado();
         fecharModal();
     };
 
-    // Link Universal do Google Maps
     document.getElementById("btn-usar-maps").onclick = () => {
         window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(enderecoDestino)}&travelmode=driving`, '_blank');
         marcarComoVisitado();
@@ -613,19 +637,16 @@ function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
             if (prazo !== "Sem prazo") { prazoTexto = ` (Até ${prazo})`; }
         } else { prazoTexto = " (Destino Final)"; }
 
-        // O botão agora não tem um link (href) direto, ele aciona o Modal de escolha!
         const btn = document.createElement("button");
         btn.className = "btn-navegar";
         btn.innerText = `Navegar para Parada ${i+1} 🚗 ${prazoTexto}`;
         
-        // CSS embutido no botão para garantir que ele fica com a aparência do "A" antigo
         btn.style.width = "100%";
         btn.style.border = "none";
         btn.style.fontSize = "16px";
         btn.style.cursor = "pointer";
 
         btn.onclick = function() { 
-            // Abre a tela perguntando se é Waze ou Google Maps!
             abrirSeletorNavegacao(leg.end_address, this, i+1);
         };
         divLista.appendChild(btn);
