@@ -21,18 +21,14 @@ let dadosUsuario = null;
 let mapa;
 let directionsService;
 let directionsRenderer;
-
-// Memória do Localizador de Pacotes
 let enderecosOtimizadosGlobal = []; 
 
-// --- REGRA DE OURO: CHECAGEM DINÂMICA DE PLANO ---
 function usuarioEhPro() {
     if (!dadosUsuario) return false; 
     if (!dadosUsuario.plano) return false;
     return dadosUsuario.plano.toLowerCase().trim() === "pro";
 }
 
-// --- VERIFICAÇÃO DE LOGIN E BLOQUEIO VISUAL ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         usuarioLogado = user;
@@ -92,7 +88,6 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- FUNÇÃO DO MAPA ---
 window.iniciarMapa = function() {
     const centroInicial = { lat: -23.55052, lng: -46.633309 };
     mapa = new google.maps.Map(document.getElementById("mapa"), {
@@ -121,22 +116,18 @@ function resetarTelas() {
 
 window.voltarParaMapa = () => { resetarTelas(); document.getElementById("painel-principal").style.display = "block"; };
 
-// --- LOGICA FINANCEIRA E HISTÓRICO ---
 async function abrirFinanceiro() {
     if (!usuarioEhPro()) return alert("🔒 Recurso VIP: Exclusivo para PRO.");
     resetarTelas(); document.getElementById("aba-financeiro").style.display = "block"; carregarResumoFinanceiro();
 }
-async function carregarResumoFinanceiro() { /* Original Mantido Internamente no Firebase */ }
-async function carregarHistorico() { /* Original Mantido Internamente no Firebase */ }
+async function carregarResumoFinanceiro() { /* Original Mantido Internamente */ }
+async function carregarHistorico() { /* Original Mantido Internamente */ }
 
-// ========================================================
-// CÂMERA DINÂMICA E LOCALIZADOR DE PACOTES
-// ========================================================
 let streamCamera = null;
 let scannerAtivo = false;
 let workerTesseract = null; 
-
 let audioCtx = null;
+
 function iniciarAudioMobile() {
     if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
     if (audioCtx.state === 'suspended') { audioCtx.resume(); }
@@ -182,48 +173,33 @@ function extrairEnderecoAvancado(textoBruto) {
     return null; 
 }
 
-// 🎯 O NOVO CÉREBRO: Compara o que a câmera leu com a rota do Google
 function buscarPacoteNaRota(enderecoLido) {
-    // Tira acentos e coloca minúsculo para a busca ser à prova de falhas
     const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    
     const buscaNorm = normalize(enderecoLido);
     const numeroMatch = buscaNorm.match(/\d{1,5}/);
     const numero = numeroMatch ? numeroMatch[0] : null;
 
     let melhorIndice = -1;
-    
-    // Varre todos os endereços da rota otimizada salva na memória
     for (let i = 0; i < enderecosOtimizadosGlobal.length; i++) {
         const endAlvo = normalize(enderecosOtimizadosGlobal[i]);
-        
-        // Verifica se o número do endereço bate (regra principal)
         if (numero && endAlvo.includes(numero)) {
-            // Pega algumas palavras chave da rua lida
             const palavrasBusca = buscaNorm.replace(/\d+/g, '').split(' ').filter(p => p.length > 3 && !['rua', 'avenida', 'travessa'].includes(p));
-            // Verifica se a rua lida bate com a rua da rota do Google
             const temPalavra = palavrasBusca.some(p => endAlvo.includes(p));
-            
             if (temPalavra || palavrasBusca.length === 0) {
                 melhorIndice = i;
-                break; // Achou o pacote!
+                break; 
             }
         }
     }
-
-    // Mostra o resultado na tela pro motorista
     mostrarResultadoBusca(melhorIndice, enderecoLido);
 }
 
-// 📺 TELA GIGANTE COM O RESULTADO DA BUSCA
 function mostrarResultadoBusca(indice, lido) {
     let div = document.createElement('div');
     div.style = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.95);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;text-align:center;padding:20px;";
     
     if (indice !== -1) {
-        // Se for o destino final, coloca um texto diferente
         let textoParada = (indice === enderecosOtimizadosGlobal.length - 1) ? "DESTINO FINAL" : `PARADA ${indice + 1}`;
-        
         div.innerHTML = `
             <div style="font-size: 60px; margin-bottom: 20px;">📦</div>
             <h2 style="color:#22c55e;font-size:24px;margin:0;">Pacote Encontrado na Rota!</h2>
@@ -242,25 +218,49 @@ function mostrarResultadoBusca(indice, lido) {
     document.body.appendChild(div);
 }
 
-// O Parâmetro 'modo' decide se a câmera vai preencher o campo ou buscar o pacote
+// ========================================================
+// NOVO DESIGN DA CÂMERA (COM BANNER DE CONFIRMAÇÃO)
+// ========================================================
 async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     let modal = document.getElementById("modal-scanner");
+    let emPausa = false; // Controle para pausar a câmera e exibir o banner
     
     if (!modal) {
         modal = document.createElement("div");
         modal.id = "modal-scanner";
         modal.innerHTML = `
-            <style>
-                @keyframes scanline { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
-                .laser { position: absolute; width: 100%; height: 2px; background: #22c55e; box-shadow: 0 0 10px #22c55e; animation: scanline 2s linear infinite; }
-            </style>
-            <div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000;">
+            <div style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden;">
                 <video id="video-scanner" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; height: 150px; border: 3px solid rgba(255,255,255,0.4); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); overflow: hidden;">
-                    <div class="laser"></div>
+                
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 0 2000px rgba(0,0,0,0.5); pointer-events: none;">
+                    
+                    <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 80%; height: 250px; background: transparent;">
+                        <div style="position:absolute; top:0; left:0; width:40px; height:40px; border-top: 4px solid white; border-left: 4px solid white; border-top-left-radius: 16px;"></div>
+                        <div style="position:absolute; top:0; right:0; width:40px; height:40px; border-top: 4px solid white; border-right: 4px solid white; border-top-right-radius: 16px;"></div>
+                        <div style="position:absolute; bottom:0; left:0; width:40px; height:40px; border-bottom: 4px solid white; border-left: 4px solid white; border-bottom-left-radius: 16px;"></div>
+                        <div style="position:absolute; bottom:0; right:0; width:40px; height:40px; border-bottom: 4px solid white; border-right: 4px solid white; border-bottom-right-radius: 16px;"></div>
+                    </div>
+
+                    <div id="status-scanner" style="position: absolute; top: 20%; width: 100%; text-align: center; color: white; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Mire no endereço do pacote...</div>
                 </div>
-                <div id="status-scanner" style="position: absolute; top: 15%; width: 100%; text-align: center; color: #fef08a; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Carregando Motor OCR...</div>
-                <button id="btn-fechar-camera" style="position: absolute; bottom: 40px; background: #ef4444; padding: 12px 30px; border-radius: 30px; border: none; color: white; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✖ Cancelar</button>
+                
+                <button id="btn-fechar-camera" style="position: absolute; top: 40px; left: 20px; width: 45px; height: 45px; border-radius: 50%; background: rgba(0,0,0,0.4); color: white; border: none; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">✕</button>
+
+                <div id="banner-confirmacao" style="position: absolute; bottom: 0; left: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 24px 20px 40px 20px; box-sizing: border-box; transform: translateY(100%); transition: transform 0.3s ease-out; box-shadow: 0 -10px 20px rgba(0,0,0,0.1);">
+                    <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 20px;">
+                        <div style="font-size: 24px; color: #64748b; background: #f1f5f9; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">📍</div>
+                        <div style="flex: 1;">
+                            <h3 id="texto-endereco-lido" style="margin: 0; color: #0f172a; font-size: 18px; font-weight: 700; line-height: 1.2;">-</h3>
+                            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Capturado pelo Scanner IA</p>
+                        </div>
+                    </div>
+                    
+                    <button id="btn-confirmar-parada" style="background: #2563eb; color: white; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">Adicionar parada</button>
+                    
+                    <div style="text-align: center; margin-top: 15px;">
+                        <span id="btn-recusar-parada" style="color: #64748b; font-size: 14px; font-weight: bold; cursor: pointer; padding: 10px;">Endereço incorreto? Tentar de novo 👇</span>
+                    </div>
+                </div>
             </div>
         `;
         modal.style.position = "fixed";
@@ -274,9 +274,17 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
 
     modal.style.display = "block";
     scannerAtivo = true;
+    emPausa = false; // Garante que começa rodando
+    document.getElementById("banner-confirmacao").style.transform = "translateY(100%)"; // Esconde o banner
+    
     const video = document.getElementById("video-scanner");
     const btnFechar = document.getElementById("btn-fechar-camera");
     const textStatus = document.getElementById("status-scanner");
+    const btnConfirmar = document.getElementById("btn-confirmar-parada");
+    const btnRecusar = document.getElementById("btn-recusar-parada");
+
+    // Muda o texto do botão baseado no modo
+    btnConfirmar.innerText = modo === 'busca' ? "Localizar este Pacote" : "Adicionar parada";
 
     try {
         streamCamera = await navigator.mediaDevices.getUserMedia({ 
@@ -295,20 +303,18 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
         if (workerTesseract) { await workerTesseract.terminate(); workerTesseract = null; }
         modal.style.display = "none";
     };
+    
+    // O clique no X ou fechar tudo
     btnFechar.onclick = fecharTudo;
 
     try {
         if (!workerTesseract) { workerTesseract = await Tesseract.createWorker('por'); }
-        // Muda o texto dependendo de onde o motorista apertou
-        if(modo === 'busca') {
-            textStatus.innerHTML = "<span style='color: #22c55e;'>Localizador Ativo: Mire no Endereço do Pacote</span>";
-        } else {
-            textStatus.innerHTML = "<span style='color: white;'>Mire no Endereço para Adicionar Parada</span>";
-        }
-    } catch(e) { textStatus.innerText = "Erro ao carregar OCR."; return; }
+        textStatus.innerText = "Mire na etiqueta do endereço...";
+    } catch(e) { textStatus.innerText = "Erro ao carregar IA."; return; }
 
     const processarQuadroAoVivo = async () => {
-        if (!scannerAtivo || !workerTesseract) return;
+        // Se a câmera foi fechada ou o banner está na tela (emPausa), interrompe a IA!
+        if (!scannerAtivo || !workerTesseract || emPausa) return;
 
         const canvas = document.createElement("canvas");
         const w = video.videoWidth;
@@ -328,29 +334,46 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
 
         try {
             const { data: { text } } = await workerTesseract.recognize(canvas);
-            if (!scannerAtivo) return; 
+            if (!scannerAtivo || emPausa) return; 
 
             const enderecoLocalizado = extrairEnderecoAvancado(text);
 
             if (enderecoLocalizado) {
+                // A IA ACHOU O ENDEREÇO!
                 tocarBeep(); 
-                fecharTudo(); 
+                emPausa = true; // Pausa a câmera
                 
-                // MÁGICA DE ROTASAMNTO: Preenche o Input OU Faz a Busca!
-                if (modo === 'input') {
-                    inputAlvo.value = enderecoLocalizado.charAt(0).toUpperCase() + enderecoLocalizado.slice(1);
-                    inputAlvo.focus(); 
-                    const event = new Event('input', { bubbles: true });
-                    inputAlvo.dispatchEvent(event);
-                } else if (modo === 'busca') {
-                    buscarPacoteNaRota(enderecoLocalizado);
-                }
+                const textoFinal = enderecoLocalizado.charAt(0).toUpperCase() + enderecoLocalizado.slice(1);
+                
+                // Preenche o Banner e sobe ele na tela
+                document.getElementById("texto-endereco-lido").innerText = textoFinal;
+                document.getElementById("banner-confirmacao").style.transform = "translateY(0)";
+
+                // Ação 1: O motorista CLICOU NO BOTÃO AZUL
+                btnConfirmar.onclick = () => {
+                    fecharTudo(); // Fecha a câmera inteira
+                    if (modo === 'input') {
+                        inputAlvo.value = textoFinal;
+                        inputAlvo.focus(); 
+                        const event = new Event('input', { bubbles: true });
+                        inputAlvo.dispatchEvent(event);
+                    } else if (modo === 'busca') {
+                        buscarPacoteNaRota(textoFinal);
+                    }
+                };
+
+                // Ação 2: O motorista CLICOU EM "TENTAR DE NOVO"
+                btnRecusar.onclick = () => {
+                    document.getElementById("banner-confirmacao").style.transform = "translateY(100%)"; // Esconde banner
+                    emPausa = false; // Despausa a IA
+                    setTimeout(processarQuadroAoVivo, 500); // Volta a ler a câmera
+                };
 
             } else {
                 setTimeout(processarQuadroAoVivo, 500); 
             }
         } catch (err) {
-            if (scannerAtivo) setTimeout(processarQuadroAoVivo, 1000);
+            if (scannerAtivo && !emPausa) setTimeout(processarQuadroAoVivo, 1000);
         }
     };
     
@@ -371,11 +394,33 @@ function criarNovaParada() {
     const div = document.createElement("div");
     div.className = "parada-grupo";
     
+    const linha1 = document.createElement("div");
+    linha1.className = "parada-linha-principal";
+
+    const iconeBusca = document.createElement("span");
+    iconeBusca.className = "icone-busca";
+    iconeBusca.innerText = "🔍";
+
     const input = document.createElement("input");
     input.type = "text";
     input.className = "input-parada";
-    input.placeholder = "Endereço...";
+    input.placeholder = "Toque para adicionar";
 
+    const btnRemover = document.createElement("button");
+    btnRemover.innerText = "×";
+    btnRemover.className = "btn-remover-parada";
+    btnRemover.onclick = () => containerParadas.removeChild(div);
+
+    linha1.append(iconeBusca, input, btnRemover);
+
+    const linha2 = document.createElement("div");
+    linha2.className = "parada-linha-ferramentas";
+
+    const tempoWrapper = document.createElement("div");
+    tempoWrapper.className = "tempo-wrapper";
+    const iconeTempo = document.createElement("span");
+    iconeTempo.innerText = "⏰";
+    
     const inputTempo = document.createElement("input");
     inputTempo.type = "time";
     inputTempo.className = "input-tempo";
@@ -389,6 +434,11 @@ function criarNovaParada() {
         }
     });
 
+    tempoWrapper.append(iconeTempo, inputTempo);
+
+    const acoesDireita = document.createElement("div");
+    acoesDireita.className = "acoes-direita";
+
     const btnVoz = document.createElement("button");
     btnVoz.innerText = "🎤";
     btnVoz.className = "btn-microfone";
@@ -399,17 +449,14 @@ function criarNovaParada() {
             alert("🎤 Recurso VIP: A digitação por voz é exclusiva do plano PRO!");
             return;
         }
-
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) { return alert("Seu navegador não suporta voz nativa."); }
+        if (!SpeechRecognition) { return alert("O seu navegador não suporta voz nativa."); }
 
         const recognition = new SpeechRecognition();
         recognition.lang = 'pt-BR';
-        
-        recognition.onstart = () => { input.placeholder = "Ouvindo... 🔴"; btnVoz.style.color = "#ef4444"; };
-        recognition.onresult = (event) => { input.value = event.results[0][0].transcript; btnVoz.style.color = "#64748b"; input.focus(); };
-        recognition.onerror = () => { input.placeholder = "Endereço..."; btnVoz.style.color = "#64748b"; };
-
+        recognition.onstart = () => { input.placeholder = "Ouvindo..."; btnVoz.style.color = "#ef4444"; };
+        recognition.onresult = (event) => { input.value = event.results[0][0].transcript; btnVoz.style.color = "#475569"; input.focus(); };
+        recognition.onerror = () => { input.placeholder = "Toque para adicionar"; btnVoz.style.color = "#475569"; };
         recognition.start();
     };
 
@@ -424,20 +471,17 @@ function criarNovaParada() {
             return;
         }
         iniciarAudioMobile(); 
-        abrirScannerInteligente(input, 'input'); // Modo preenchimento
+        abrirScannerInteligente(input, 'input'); 
     };
 
-    const btnRemover = document.createElement("button");
-    btnRemover.innerText = "×";
-    btnRemover.className = "btn-remover-parada";
-    btnRemover.onclick = () => containerParadas.removeChild(div);
+    acoesDireita.append(btnCam, btnVoz);
+    linha2.append(tempoWrapper, acoesDireita);
 
-    div.append(inputTempo, input, btnVoz, btnCam, btnRemover);
+    div.append(linha1, linha2);
     containerParadas.appendChild(div);
     configurarAutocomplete(input);
 }
 
-// --- EVENTOS DE INTERFACE E ROTA ---
 document.addEventListener("DOMContentLoaded", function() {
     const btnMenu = document.getElementById("btn-menu");
     const btnFecharMenu = document.getElementById("btn-fechar-menu");
@@ -501,17 +545,15 @@ function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
     const divLista = document.getElementById("lista-paradas");
     divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>";
     
-    // Grava a rota finalizada na memória para o Localizador de Pacotes
     enderecosOtimizadosGlobal = result.routes[0].legs.map(leg => leg.end_address);
 
-    // 🌟 BOTÃO ESTRATÉGICO: Localizador de Pacotes
     const btnBusca = document.createElement("button");
     btnBusca.innerHTML = "📦 Bipar e Localizar Pacote";
     btnBusca.style = "background: linear-gradient(90deg, #f59e0b, #d97706); color: white; padding: 18px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-bottom: 20px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 10px;";
     btnBusca.onclick = () => {
         if (!usuarioEhPro()) return alert("🔒 Recurso VIP: O Localizador de Pacotes é exclusivo do plano PRO!");
         iniciarAudioMobile();
-        abrirScannerInteligente(null, 'busca'); // Abre a câmera no Modo Busca
+        abrirScannerInteligente(null, 'busca'); 
     };
     divLista.appendChild(btnBusca);
     
