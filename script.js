@@ -122,8 +122,8 @@ async function abrirFinanceiro() {
     if (!usuarioEhPro()) return alert("🔒 Recurso VIP: Exclusivo para PRO.");
     resetarTelas(); document.getElementById("aba-financeiro").style.display = "block"; carregarResumoFinanceiro();
 }
-async function carregarResumoFinanceiro() { /* Mantido */ }
-async function carregarHistorico() { /* Mantido */ }
+async function carregarResumoFinanceiro() { /* Mantido no backend */ }
+async function carregarHistorico() { /* Mantido no backend */ }
 
 let streamCamera = null;
 let scannerAtivo = false;
@@ -377,9 +377,6 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     setTimeout(processarQuadroAoVivo, 1500);
 }
 
-// ========================================================
-// BARRA DE PESQUISA 
-// ========================================================
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const numeroDeParadasAtuais = containerParadas.children.length;
@@ -400,7 +397,6 @@ function criarNovaParada() {
     
     const input = document.createElement("input");
     input.type = "text";
-    // ⚠️ A CLASSE ABAIXO FOI RECUPERADA! É ELA QUE FAZ A ROTA FUNCIONAR ⚠️
     input.className = "input-parada"; 
     input.placeholder = "Toque para adicionar";
 
@@ -489,6 +485,76 @@ document.addEventListener("DOMContentLoaded", function() {
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 });
 
+// ========================================================
+// 🌟 NOVO: O SELETOR DE MAPAS (WAZE vs GOOGLE MAPS)
+// ========================================================
+function abrirSeletorNavegacao(enderecoDestino, botaoOrigem, numeroParada) {
+    let modal = document.getElementById("modal-nav-app");
+    
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "modal-nav-app";
+        modal.innerHTML = `
+            <div style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); z-index:99999; display:flex; flex-direction:column; justify-content:flex-end;">
+                <div id="bs-nav-content" style="background:white; border-radius:20px 20px 0 0; padding:24px; text-align:center; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:0 -5px 15px rgba(0,0,0,0.1);">
+                    <div style="width:40px; height:5px; background:#e2e8f0; border-radius:10px; margin: 0 auto 20px;"></div>
+                    <h3 style="margin:0 0 20px 0; color:#0f172a; font-size:18px;">Qual app deseja usar?</h3>
+                    
+                    <button id="btn-usar-waze" style="background:#0099ff; color:white; padding:16px; border-radius:12px; font-weight:bold; font-size:16px; width:100%; border:none; margin-bottom:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow: 0 4px 6px rgba(0, 153, 255, 0.3);">
+                        🚙 Navegar com Waze
+                    </button>
+                    
+                    <button id="btn-usar-maps" style="background:#34a853; color:white; padding:16px; border-radius:12px; font-weight:bold; font-size:16px; width:100%; border:none; margin-bottom:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow: 0 4px 6px rgba(52, 168, 83, 0.3);">
+                        🗺️ Navegar com Google Maps
+                    </button>
+                    
+                    <button id="btn-nav-cancelar" style="background:#f1f5f9; color:#64748b; padding:14px; border-radius:12px; font-weight:bold; font-size:16px; width:100%; border:none; cursor:pointer;">Cancelar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    modal.style.display = "flex";
+    
+    // Pequeno delay para a animação de subir acontecer
+    setTimeout(() => {
+        document.getElementById("bs-nav-content").style.transform = "translateY(0)";
+    }, 10);
+
+    const fecharModal = () => {
+        document.getElementById("bs-nav-content").style.transform = "translateY(100%)";
+        setTimeout(() => modal.style.display = "none", 300);
+    };
+
+    document.getElementById("btn-nav-cancelar").onclick = fecharModal;
+
+    // Função que risca o botão principal quando ele clica no mapa
+    const marcarComoVisitado = () => {
+        botaoOrigem.classList.add("visitado");
+        botaoOrigem.innerText = `✅ Parada ${numeroParada} Finalizada`;
+        botaoOrigem.style.backgroundColor = "#94a3b8"; 
+        botaoOrigem.style.opacity = "0.6";
+        botaoOrigem.style.textDecoration = "line-through";
+        botaoOrigem.style.pointerEvents = "none";
+        botaoOrigem.style.boxShadow = "none";
+    };
+
+    // Link Universal do Waze
+    document.getElementById("btn-usar-waze").onclick = () => {
+        window.open(`https://waze.com/ul?q=${encodeURIComponent(enderecoDestino)}&navigate=yes`, '_blank');
+        marcarComoVisitado();
+        fecharModal();
+    };
+
+    // Link Universal do Google Maps
+    document.getElementById("btn-usar-maps").onclick = () => {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(enderecoDestino)}&travelmode=driving`, '_blank');
+        marcarComoVisitado();
+        fecharModal();
+    };
+}
+
 async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
@@ -547,19 +613,20 @@ function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
             if (prazo !== "Sem prazo") { prazoTexto = ` (Até ${prazo})`; }
         } else { prazoTexto = " (Destino Final)"; }
 
-        // A MÁGICA DA NAVEGAÇÃO INDIVIDUAL À PROVA DE FALHAS
-        // Puxa o GPS nativo do celular apontando direto pra parada que ele clicou
-        const linkMapsOficial = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(leg.end_address)}&travelmode=driving`;
-
-        const btn = document.createElement("a");
+        // O botão agora não tem um link (href) direto, ele aciona o Modal de escolha!
+        const btn = document.createElement("button");
         btn.className = "btn-navegar";
         btn.innerText = `Navegar para Parada ${i+1} 🚗 ${prazoTexto}`;
-        btn.href = linkMapsOficial;
-        btn.target = "_blank";
         
+        // CSS embutido no botão para garantir que ele fica com a aparência do "A" antigo
+        btn.style.width = "100%";
+        btn.style.border = "none";
+        btn.style.fontSize = "16px";
+        btn.style.cursor = "pointer";
+
         btn.onclick = function() { 
-            this.classList.add("visitado"); 
-            this.innerText = `✅ Parada ${i+1} Finalizada`; 
+            // Abre a tela perguntando se é Waze ou Google Maps!
+            abrirSeletorNavegacao(leg.end_address, this, i+1);
         };
         divLista.appendChild(btn);
     });
