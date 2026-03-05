@@ -22,7 +22,7 @@ let mapa;
 let directionsService;
 let directionsRenderer;
 
-// --- VERIFICAÇÃO DE LOGIN E BLOQUEIO VISUAL ---
+// --- VERIFICAÇÃO DE LOGIN E BLOQUEIO VISUAL (COM FREEMIUM TRIAL) ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         usuarioLogado = user;
@@ -46,28 +46,22 @@ onAuthStateChanged(auth, async (user) => {
         // --- LÓGICA DE TRIAL (DEGUSTAÇÃO) E REBAIXAMENTO ---
         const dataAtual = new Date().getTime();
         
-        // 1. Se passou da data de vencimento, rebaixa para grátis e bloqueia na hora
         if (dadosUsuario.plano === "pro" && dadosUsuario.vencimento && dadosUsuario.vencimento < dataAtual && user.email !== EMAIL_ADMIN) {
             dadosUsuario.plano = "gratis";
-            alert("⚠️ Seu período de teste VIP expirou! Suas funções foram limitadas para a versão gratuita. Entre em contato para assinar o Roturbo PRO e continuar otimizando tempo e dinheiro.");
+            alert("⚠️ Seu período de teste VIP expirou! Suas funções foram limitadas para a versão gratuita. Entre em contato para assinar o Roturbo PRO.");
         }
 
-        // 2. Cria o Banner de Contagem Regressiva para quem está no Teste
         if (dadosUsuario.plano === "pro" && dadosUsuario.vencimento && dadosUsuario.vencimento > dataAtual && user.email !== EMAIL_ADMIN) {
-            // Calcula quantos dias faltam
             const diasRestantes = Math.ceil((dadosUsuario.vencimento - dataAtual) / (1000 * 60 * 60 * 24));
-            
             const painel = document.getElementById("painel-principal");
-            // Só desenha se o banner ainda não existir na tela
             if (!document.getElementById("banner-trial") && painel) {
                 const banner = document.createElement("div");
                 banner.id = "banner-trial";
                 banner.className = "banner-vip";
                 banner.innerHTML = `🎁 <span><strong>Acesso VIP Liberado!</strong> Restam ${diasRestantes} dias de teste grátis.</span>`;
-                painel.insertBefore(banner, painel.firstChild); // Coloca bem no topo do painel
+                painel.insertBefore(banner, painel.firstChild);
             }
         }
-        // ------------------------------------------------
 
         const pPerfil = document.querySelector(".menu-perfil p");
         if (pPerfil) {
@@ -111,7 +105,6 @@ function configurarAutocomplete(inputElement) {
     });
 }
 
-// --- NAVEGAÇÃO ENTRE TELAS ---
 function resetarTelas() {
     document.getElementById("painel-principal").style.display = "none";
     document.getElementById("aba-historico").style.display = "none";
@@ -214,7 +207,98 @@ async function carregarHistorico() {
     } catch (e) { console.error(e); }
 }
 
-// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA (COM VOZ, CÂMERA E RELÓGIO) ---
+// ========================================================
+// NOVO SISTEMA: CÂMERA INTELIGENTE EM TEMPO REAL (SCANNER)
+// ========================================================
+let streamCamera = null;
+
+async function abrirScannerInteligente(inputAlvo) {
+    // Cria o Modal do Scanner na tela
+    let modal = document.getElementById("modal-scanner");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "modal-scanner";
+        modal.innerHTML = `
+            <div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000;">
+                <video id="video-scanner" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; height: 200px; border: 3px dashed #3b82f6; border-radius: 12px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);">
+                    <div style="position: absolute; top: -35px; width: 100%; text-align: center; color: white; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Mire na etiqueta do pacote</div>
+                </div>
+                
+                <div style="position: absolute; bottom: 40px; display: flex; gap: 30px; align-items: center;">
+                    <button id="btn-fechar-camera" style="background: #ef4444; width: 50px; height: 50px; border-radius: 50%; border: none; color: white; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✖</button>
+                    <button id="btn-capturar-camera" style="background: #3b82f6; width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; color: white; font-size: 28px; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">📸</button>
+                </div>
+            </div>
+        `;
+        modal.style.position = "fixed";
+        modal.style.top = "0";
+        modal.style.left = "0";
+        modal.style.width = "100vw";
+        modal.style.height = "100vh";
+        modal.style.zIndex = "9999";
+        document.body.appendChild(modal);
+    }
+
+    modal.style.display = "block";
+    const video = document.getElementById("video-scanner");
+    const btnFechar = document.getElementById("btn-fechar-camera");
+    const btnCapturar = document.getElementById("btn-capturar-camera");
+
+    // Inicia a Câmera Traseira
+    try {
+        streamCamera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = streamCamera;
+    } catch (err) {
+        alert("Erro ao acessar a câmera. Verifique as permissões do seu celular.");
+        modal.style.display = "none";
+        return;
+    }
+
+    // Fechar Câmera
+    btnFechar.onclick = () => {
+        if (streamCamera) streamCamera.getTracks().forEach(track => track.stop());
+        modal.style.display = "none";
+    };
+
+    // Bater a foto e analisar (OCR Tesseract)
+    btnCapturar.onclick = () => {
+        btnCapturar.innerText = "⏳";
+        btnCapturar.disabled = true;
+        
+        // "Tira um Print" do vídeo atual
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL("image/jpeg");
+        
+        // Desliga a câmera e esconde o visor
+        if (streamCamera) streamCamera.getTracks().forEach(track => track.stop());
+        modal.style.display = "none";
+        inputAlvo.value = "Analisando pacote... 🔍";
+
+        // Manda pro Tesseract.js ler o texto
+        Tesseract.recognize(imageData, 'por').then(({ data: { text } }) => {
+            // Limpa o texto lido para ficar bonitinho
+            let textoLimpo = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+            inputAlvo.value = textoLimpo.substring(0, 60); // Joga no campo de endereço!
+            inputAlvo.focus(); // Aciona o Google Maps
+            btnCapturar.innerText = "📸";
+            btnCapturar.disabled = false;
+        }).catch(err => {
+            inputAlvo.value = "";
+            inputAlvo.placeholder = "Erro ao ler a etiqueta. Tente novamente.";
+            btnCapturar.innerText = "📸";
+            btnCapturar.disabled = false;
+        });
+    };
+}
+// ========================================================
+
+// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA ---
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const numeroDeParadasAtuais = containerParadas.children.length;
@@ -232,23 +316,22 @@ function criarNovaParada() {
     const div = document.createElement("div");
     div.className = "parada-grupo";
     
-    // Campo de Endereço
+    // Campo Endereço
     const input = document.createElement("input");
     input.type = "text";
     input.className = "input-parada";
     input.placeholder = "Endereço...";
 
-    // --- NOVO: Campo de Janela de Tempo ---
+    // Campo de Tempo
     const inputTempo = document.createElement("input");
     inputTempo.type = "time";
     inputTempo.className = "input-tempo";
     inputTempo.title = "Horário Limite de Chegada";
 
-    // Trava do tempo para usuário grátis
     if (isPro === false) {
         inputTempo.onclick = (e) => {
             e.preventDefault(); 
-            inputTempo.blur(); // Tira o foco para ele não conseguir abrir o relógio
+            inputTempo.blur(); 
             alert("⏰ Recurso VIP: Agendar o horário limite de chegada é exclusivo do plano PRO!");
         };
         inputTempo.readOnly = true;
@@ -298,46 +381,29 @@ function criarNovaParada() {
         recognition.start();
     };
 
-    // Botão Câmera (Tesseract)
-    const idUnico = "foto-" + Date.now();
-    const labelCam = document.createElement("label");
-    labelCam.className = "btn-camera";
-    labelCam.htmlFor = idUnico;
-    labelCam.innerText = "📸";
+    // --- NOVO: Botão Câmera Inteligente (Live Scanner) ---
+    const btnCam = document.createElement("button");
+    btnCam.className = "btn-camera";
+    btnCam.innerText = "📸";
+    btnCam.type = "button";
 
-    labelCam.onclick = (e) => {
+    btnCam.onclick = () => {
         if (isPro === false) {
-            e.preventDefault(); 
-            alert("📸 Recurso VIP: A leitura de endereço por foto é exclusiva do plano PRO!");
+            alert("📸 Recurso VIP: O Scanner Inteligente de Pacotes é exclusivo do plano PRO!");
+            return;
         }
+        // Chama a nossa tela de Realidade Aumentada!
+        abrirScannerInteligente(input);
     };
 
-    const inputFoto = document.createElement("input");
-    inputFoto.type = "file";
-    inputFoto.id = idUnico;
-    inputFoto.accept = "image/*";
-    inputFoto.capture = "environment";
-    inputFoto.style.display = "none";
-
-    inputFoto.onchange = (e) => {
-        const arq = e.target.files[0];
-        if (arq) {
-            input.value = "Lendo... ⏳";
-            Tesseract.recognize(arq, 'por').then(({ data: { text } }) => {
-                input.value = text.substring(0, 45);
-                input.focus();
-            });
-        }
-    };
-
-    // Botão de Remover (X)
+    // Botão de Remover
     const btnRemover = document.createElement("button");
     btnRemover.innerText = "×";
     btnRemover.className = "btn-remover-parada";
     btnRemover.onclick = () => containerParadas.removeChild(div);
 
-    // Coloca todos os elementos dentro da linha na ordem certa
-    div.append(inputTempo, input, btnVoz, labelCam, inputFoto, btnRemover);
+    // Observe que não precisamos mais daquele input "file" escondido!
+    div.append(inputTempo, input, btnVoz, btnCam, btnRemover);
     containerParadas.appendChild(div);
     configurarAutocomplete(input);
 }
@@ -421,17 +487,17 @@ async function calcularRotaOtimizada() {
     const destino = document.getElementById("destino").value;
     
     const inputsEnderecos = document.querySelectorAll(".input-parada");
-    const inputsTempos = document.querySelectorAll(".input-tempo"); // Captura os relógios
+    const inputsTempos = document.querySelectorAll(".input-tempo");
 
     if (!origem || !destino) return alert("Origem e Destino são obrigatórios!");
 
     let waypoints = [];
-    let temposOriginais = []; // Lista para gravar a ordem original dos horários
+    let temposOriginais = [];
 
     inputsEnderecos.forEach((input, index) => { 
         if (input.value) { 
             waypoints.push({ location: input.value, stopover: true }); 
-            temposOriginais.push(inputsTempos[index].value || "Sem prazo"); // Grava o horário correspondente
+            temposOriginais.push(inputsTempos[index].value || "Sem prazo");
         } 
     });
 
@@ -455,7 +521,6 @@ async function calcularRotaOtimizada() {
                 });
             }
             
-            // Pega a nova ordem misturada pelo Google e gera os botões com os prazos corretos
             const ordemOtimizada = result.routes[0].waypoint_order;
             gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada);
         }
@@ -469,10 +534,9 @@ function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
     result.routes[0].legs.forEach((leg, i) => {
         let prazoTexto = "";
         
-        // Verifica se é uma parada ou o destino final (o último "leg" é a chegada ao destino)
         if (i < ordemOtimizada.length) {
-            const indiceOriginal = ordemOtimizada[i]; // Acha de onde essa parada veio
-            const prazo = temposOriginais[indiceOriginal]; // Pega o horário original dela
+            const indiceOriginal = ordemOtimizada[i]; 
+            const prazo = temposOriginais[indiceOriginal]; 
             
             if (prazo !== "Sem prazo") {
                 prazoTexto = ` (Até ${prazo})`;
