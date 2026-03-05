@@ -94,7 +94,7 @@ window.iniciarMapa = function() {
         zoom: 12,
         center: centroInicial,
         mapTypeId: google.maps.MapTypeId.ROADMAP,
-        disableDefaultUI: true, // Deixa o mapa mais limpo
+        disableDefaultUI: true, 
         zoomControl: true
     });
     directionsService = new google.maps.DirectionsService();
@@ -122,8 +122,8 @@ async function abrirFinanceiro() {
     if (!usuarioEhPro()) return alert("🔒 Recurso VIP: Exclusivo para PRO.");
     resetarTelas(); document.getElementById("aba-financeiro").style.display = "block"; carregarResumoFinanceiro();
 }
-async function carregarResumoFinanceiro() { /* Lógica mantida no banco */ }
-async function carregarHistorico() { /* Lógica mantida no banco */ }
+async function carregarResumoFinanceiro() { /* Original Mantido Internamente */ }
+async function carregarHistorico() { /* Original Mantido Internamente */ }
 
 let streamCamera = null;
 let scannerAtivo = false;
@@ -176,23 +176,30 @@ function extrairEnderecoAvancado(textoBruto) {
 }
 
 function buscarPacoteNaRota(enderecoLido) {
-    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\w\s]/gi, ' ');
     const buscaNorm = normalize(enderecoLido);
-    const numeroMatch = buscaNorm.match(/\d{1,5}/);
-    const numero = numeroMatch ? numeroMatch[0] : null;
+    const palavrasLidas = buscaNorm.split(/\s+/).filter(p => p.length > 2 || /\d/.test(p)); 
 
     let melhorIndice = -1;
+    let maiorPontuacao = 0;
+
     for (let i = 0; i < enderecosOtimizadosGlobal.length; i++) {
         const endAlvo = normalize(enderecosOtimizadosGlobal[i]);
-        if (numero && endAlvo.includes(numero)) {
-            const palavrasBusca = buscaNorm.replace(/\d+/g, '').split(' ').filter(p => p.length > 3 && !['rua', 'avenida', 'travessa'].includes(p));
-            const temPalavra = palavrasBusca.some(p => endAlvo.includes(p));
-            if (temPalavra || palavrasBusca.length === 0) {
-                melhorIndice = i;
-                break; 
+        let pontuacao = 0;
+        
+        palavrasLidas.forEach(palavra => {
+            if (endAlvo.includes(palavra)) {
+                pontuacao += /\d/.test(palavra) ? 3 : 1; 
             }
+        });
+
+        if (pontuacao > maiorPontuacao) {
+            maiorPontuacao = pontuacao;
+            melhorIndice = i;
         }
     }
+
+    if (maiorPontuacao < 3) { melhorIndice = -1; }
     mostrarResultadoBusca(melhorIndice, enderecoLido);
 }
 
@@ -221,7 +228,7 @@ function mostrarResultadoBusca(indice, lido) {
 }
 
 // ========================================================
-// NOVO DESIGN DA CÂMERA (COM BANNER DE CONFIRMAÇÃO ESTILO APP)
+// DESIGN DA CÂMERA (COM BANNER ESTILO APP)
 // ========================================================
 async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     let modal = document.getElementById("modal-scanner");
@@ -235,14 +242,12 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
                 <video id="video-scanner" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                 
                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 0 2000px rgba(0,0,0,0.5); pointer-events: none;">
-                    
                     <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 80%; height: 250px; background: transparent;">
                         <div style="position:absolute; top:0; left:0; width:40px; height:40px; border-top: 4px solid white; border-left: 4px solid white; border-top-left-radius: 16px;"></div>
                         <div style="position:absolute; top:0; right:0; width:40px; height:40px; border-top: 4px solid white; border-right: 4px solid white; border-top-right-radius: 16px;"></div>
                         <div style="position:absolute; bottom:0; left:0; width:40px; height:40px; border-bottom: 4px solid white; border-left: 4px solid white; border-bottom-left-radius: 16px;"></div>
                         <div style="position:absolute; bottom:0; right:0; width:40px; height:40px; border-bottom: 4px solid white; border-right: 4px solid white; border-bottom-right-radius: 16px;"></div>
                     </div>
-
                     <div id="status-scanner" style="position: absolute; top: 15%; width: 100%; text-align: center; color: white; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Mire no endereço do pacote...</div>
                 </div>
                 
@@ -258,9 +263,7 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
                             <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Capturado pelo Scanner</p>
                         </div>
                     </div>
-                    
                     <button id="btn-confirmar-parada" style="background: #2563eb; color: white; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">Adicionar parada</button>
-                    
                     <div style="text-align: center; margin-top: 15px;">
                         <span id="btn-recusar-parada" style="color: #64748b; font-size: 14px; font-weight: bold; cursor: pointer; padding: 10px;">Endereço incorreto? Tentar de novo 👇</span>
                     </div>
@@ -345,7 +348,6 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
                 
                 const textoFinal = enderecoLocalizado.charAt(0).toUpperCase() + enderecoLocalizado.slice(1);
                 
-                // Preenche a Bottom Sheet e sobe ela
                 document.getElementById("texto-endereco-lido").innerText = textoFinal;
                 document.getElementById("banner-confirmacao").style.transform = "translateY(0)";
 
@@ -379,7 +381,7 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
 }
 
 // ========================================================
-// NOVA BARRA DE PESQUISA (LAYOUT GOOGLE MAPS DA IMAGEM)
+// BARRA DE PESQUISA (LAYOUT GOOGLE MAPS)
 // ========================================================
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
@@ -393,11 +395,9 @@ function criarNovaParada() {
     const div = document.createElement("div");
     div.className = "parada-grupo";
     
-    // --- BARRA PRINCIPAL (PÍLULA) ---
     const barra = document.createElement("div");
     barra.className = "barra-pesquisa-moderna";
 
-    // SVG Lupa
     const iconLupa = document.createElement("div");
     iconLupa.innerHTML = `<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>`;
     
@@ -405,7 +405,6 @@ function criarNovaParada() {
     input.type = "text";
     input.placeholder = "Toque para adicionar";
 
-    // SVG Scanner (Câmera)
     const btnCam = document.createElement("button");
     btnCam.className = "btn-acao-icone";
     btnCam.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 5v4h2V5h4V3H5c-1.1 0-2 .9-2 2zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/><path d="M7 11h10v2H7z"/></svg>`;
@@ -415,7 +414,6 @@ function criarNovaParada() {
         abrirScannerInteligente(input, 'input'); 
     };
 
-    // SVG Microfone
     const btnVoz = document.createElement("button");
     btnVoz.className = "btn-acao-icone";
     btnVoz.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>`;
@@ -431,7 +429,6 @@ function criarNovaParada() {
         recognition.start();
     };
 
-    // SVG 3 Pontinhos (Para Remover)
     const btnRemover = document.createElement("button");
     btnRemover.className = "btn-acao-icone";
     btnRemover.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
@@ -439,7 +436,6 @@ function criarNovaParada() {
 
     barra.append(iconLupa, input, btnCam, btnVoz, btnRemover);
 
-    // --- LINHA EXTRA: O Relógio Discreto em baixo ---
     const linhaExtras = document.createElement("div");
     linhaExtras.className = "linha-extras";
     
@@ -447,7 +443,6 @@ function criarNovaParada() {
     inputTempo.type = "time";
     inputTempo.className = "input-tempo";
     inputTempo.title = "Horário Limite";
-    // Deixa o reloginho discreto e combinando com a pílula
     inputTempo.style.background = "#e2e8f0";
     inputTempo.style.padding = "4px 8px";
     inputTempo.style.borderRadius = "12px";
@@ -496,6 +491,9 @@ document.addEventListener("DOMContentLoaded", function() {
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 });
 
+// ========================================================
+// INTEGRAÇÃO DE ROTA MESTRE (MAPS UNIVERSAL)
+// ========================================================
 async function calcularRotaOtimizada() {
     const origem = document.getElementById("origem").value;
     const destino = document.getElementById("destino").value;
@@ -506,6 +504,7 @@ async function calcularRotaOtimizada() {
 
     let waypoints = []; let temposOriginais = [];
 
+    // Preenche as paradas intermediárias (se o motorista as tiver adicionado no botão azul)
     inputsEnderecos.forEach((input, index) => { 
         if (input.value) { 
             waypoints.push({ location: input.value, stopover: true }); 
@@ -525,27 +524,58 @@ async function calcularRotaOtimizada() {
                 await addDoc(collection(db, "usuarios", usuarioLogado.uid, "historico_rotas"), { distancia: km, data: new Date(), origem, destino });
             }
             const ordemOtimizada = result.routes[0].waypoint_order;
-            gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada);
+            
+            // Passamos a origem, destino e waypoints para podermos criar o Link Universal
+            gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada, origem, destino, waypoints);
         }
     });
 }
 
-function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
+function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada, origemOriginal, destinoOriginal, waypointsOriginais) {
     const divLista = document.getElementById("lista-paradas");
     divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>";
     
     enderecosOtimizadosGlobal = result.routes[0].legs.map(leg => leg.end_address);
 
+    // 1. Botão do Localizador de Pacotes
     const btnBusca = document.createElement("button");
     btnBusca.innerHTML = "📦 Bipar e Localizar Pacote";
-    btnBusca.style = "background: linear-gradient(90deg, #f59e0b, #d97706); color: white; padding: 18px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-bottom: 20px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 10px;";
+    btnBusca.style = "background: linear-gradient(90deg, #f59e0b, #d97706); color: white; padding: 18px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-bottom: 15px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 10px;";
     btnBusca.onclick = () => {
         if (!usuarioEhPro()) return alert("🔒 Recurso VIP: O Localizador de Pacotes é exclusivo do plano PRO!");
         iniciarAudioMobile();
         abrirScannerInteligente(null, 'busca'); 
     };
     divLista.appendChild(btnBusca);
+
+    // ==========================================
+    // 2. BOTÃO MESTRE (Abre a Rota Inteira no GPS)
+    // ==========================================
+    let waypointsUrl = "";
+    if (waypointsOriginais && waypointsOriginais.length > 0) {
+        // Pega os pontos intermediários e organiza-os na ordem que a IA decidiu que é mais rápida
+        const waypointsOrdenados = ordemOtimizada.map(idx => waypointsOriginais[idx].location);
+        waypointsUrl = "&waypoints=" + waypointsOrdenados.map(w => encodeURIComponent(w)).join('|');
+    }
+
+    // Cria o Link Oficial do Google Maps que não falha no telemóvel
+    const linkRotasGoogle = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origemOriginal)}&destination=${encodeURIComponent(destinoOriginal)}${waypointsUrl}&travelmode=driving`;
+
+    const btnNavegarCompleto = document.createElement("a");
+    btnNavegarCompleto.innerHTML = "🗺️ Abrir Rota Completa no GPS";
+    btnNavegarCompleto.href = linkRotasGoogle;
+    btnNavegarCompleto.target = "_blank"; // Abre no aplicativo nativo sem fechar o seu
+    btnNavegarCompleto.style = "display: block; background: #0f172a; color: white; padding: 18px; border-radius: 12px; font-weight: bold; text-align: center; text-decoration: none; margin-bottom: 25px; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);";
+    divLista.appendChild(btnNavegarCompleto);
     
+    // ==========================================
+    // 3. Checklist de Paradas para o Motorista
+    // ==========================================
+    const tituloChecklist = document.createElement("p");
+    tituloChecklist.innerHTML = "<strong>Checklist de Entregas:</strong> (Toque para concluir)";
+    tituloChecklist.style.color = "#64748b";
+    divLista.appendChild(tituloChecklist);
+
     result.routes[0].legs.forEach((leg, i) => {
         let prazoTexto = "";
         if (i < ordemOtimizada.length) {
@@ -554,11 +584,17 @@ function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
             if (prazo !== "Sem prazo") { prazoTexto = ` (Até ${prazo})`; }
         } else { prazoTexto = " (Destino Final)"; }
 
-        const btn = document.createElement("a");
-        btn.className = "btn-navegar";
-        btn.innerText = `Navegar para Parada ${i+1} 🚗 ${prazoTexto}`;
-        btn.href = `geo:0,0?q=${encodeURIComponent(leg.end_address)}`;
-        btn.onclick = function() { this.classList.add("visitado"); this.innerText = `✅ Parada ${i+1} Finalizada`; };
+        const btn = document.createElement("button");
+        btn.innerHTML = `<strong>Parada ${i+1} ${prazoTexto}</strong><br><span style="font-size:13px; font-weight:normal;">${leg.end_address}</span>`;
+        btn.style = "background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; width: 100%; text-align: left; margin-bottom: 10px; cursor: pointer; transition: 0.3s;";
+        
+        // Quando ele entregar o pacote, ele clica aqui e o botão fica verde indicando conclusão
+        btn.onclick = function() { 
+            this.style.backgroundColor = "#10b981"; // Verde sucesso
+            this.style.color = "white";
+            this.innerHTML = `✅ Parada ${i+1} Concluída`; 
+            this.disabled = true;
+        };
         divLista.appendChild(btn);
     });
 }
