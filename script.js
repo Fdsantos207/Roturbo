@@ -22,6 +22,9 @@ let mapa;
 let directionsService;
 let directionsRenderer;
 
+// Memória do Localizador de Pacotes
+let enderecosOtimizadosGlobal = []; 
+
 // --- REGRA DE OURO: CHECAGEM DINÂMICA DE PLANO ---
 function usuarioEhPro() {
     if (!dadosUsuario) return false; 
@@ -42,7 +45,6 @@ onAuthStateChanged(auth, async (user) => {
             dadosUsuario = { plano: "gratis", nome: "Motorista" };
         }
 
-        // 🔥 MASTER OVERRIDE 
         const EMAIL_ADMIN = "fdsantos.melo@hotmail.com";
         const emailSeguro = user.email ? user.email.toLowerCase().trim() : "";
         const isAdmin = (emailSeguro === EMAIL_ADMIN);
@@ -50,12 +52,9 @@ onAuthStateChanged(auth, async (user) => {
         if (isAdmin) {
             dadosUsuario.plano = "pro";
             dadosUsuario.nome = "Danilo (Admin)";
-            await setDoc(docRef, { 
-                nome: "Danilo (Admin)", email: user.email, plano: "pro", status: "ativo" 
-            }, { merge: true });
+            await setDoc(docRef, { nome: "Danilo (Admin)", email: user.email, plano: "pro", status: "ativo" }, { merge: true });
         }
 
-        // --- LÓGICA DE TRIAL E REBAIXAMENTO ---
         const dataAtual = new Date().getTime();
         
         if (usuarioEhPro() && dadosUsuario.vencimento && dadosUsuario.vencimento < dataAtual && !isAdmin) {
@@ -131,7 +130,7 @@ async function carregarResumoFinanceiro() { /* Original Mantido Internamente no 
 async function carregarHistorico() { /* Original Mantido Internamente no Firebase */ }
 
 // ========================================================
-// CÂMERA DINÂMICA (OCR -> FILTRO AVANÇADO -> GEOCODING)
+// CÂMERA DINÂMICA E LOCALIZADOR DE PACOTES
 // ========================================================
 let streamCamera = null;
 let scannerAtivo = false;
@@ -159,58 +158,92 @@ function tocarBeep() {
     } catch (e) { console.log("Áudio bloqueado"); }
 }
 
-// 🧠 NOVO FILTRO NLP/REGEX (O Cérebro de Extração de Endereço)
 function extrairEnderecoAvancado(textoBruto) {
     let txt = textoBruto.replace(/\n/g, ' ').replace(/\s+/g, ' ');
-    
-    // 1. Tenta achar o CEP primeiro (O Geocoding do Google ama CEP)
     const regexCEP = /\b\d{5}-?\d{3}\b/;
     const matchCEP = txt.match(regexCEP);
-
-    // 2. Busca o padrão principal de Logradouro + Número
-    // Pega: Rua, Av, Avenida, Praça, Rodovia, etc.
     const regexRua = /(Rua|R\.|Av\.|Avenida|Travessa|Trav\.|Alameda|Al\.|Estrada|Rodovia|Praça|Praca|Vila|Vl\.)\s+([A-Za-zÀ-ÖØ-öø-ÿ\s]+?)(?:[,|-]?\s*n?º?°?\s*)(\d{1,5})/i;
     const matchRua = txt.match(regexRua);
-
-    // 3. Tenta achar a Sigla do Estado
     const regexEstado = /\b(SP|RJ|MG|RS|PR|SC|BA|PE|CE|PA|GO|AM|MT|MS|ES|DF|PB|RN|AL|SE|PI|RO|RR|AP|AC|TO|MA)\b/i;
     const matchEstado = txt.match(regexEstado);
 
     let enderecoMontado = "";
-
-    // Se achou uma Rua bonitinha
     if (matchRua) {
         enderecoMontado = matchRua[0].trim();
-        
-        // Se tiver CEP na etiqueta, junta tudo (Fica perfeito pro Google)
-        if (matchCEP) {
-            enderecoMontado += ", " + matchCEP[0];
-        } else if (matchEstado) {
-            enderecoMontado += " - " + matchEstado[0].toUpperCase();
-        }
+        if (matchCEP) { enderecoMontado += ", " + matchCEP[0]; } 
+        else if (matchEstado) { enderecoMontado += " - " + matchEstado[0].toUpperCase(); }
         return enderecoMontado;
     }
 
-    // PLANO B: Etiqueta mal impressa (sem a palavra "Rua")
-    // Busca: "Nome da Rua Bonita, 1500"
     const regexPlanoB = /([A-Za-zÀ-ÖØ-öø-ÿ\s]{6,40})(?:[,|-]?\s*n?º?°?\s*)(\d{1,5})/i;
     const matchB = txt.match(regexPlanoB);
-
-    if (matchB && matchCEP) {
-        // Se achou um nome+numero E um CEP, é certeza que é endereço.
-        return matchB[0].trim() + ", " + matchCEP[0];
-    }
-
-    // PLANO C: Só tem o CEP legível na caixa
-    // O Google Maps consegue achar a rua APENAS com o CEP!
-    if (matchCEP) {
-        return matchCEP[0];
-    }
-
-    return null; // É lixo, código de barra ou nome, ignora.
+    if (matchB && matchCEP) { return matchB[0].trim() + ", " + matchCEP[0]; }
+    if (matchCEP) { return matchCEP[0]; }
+    return null; 
 }
 
-async function abrirScannerInteligente(inputAlvo) {
+// 🎯 O NOVO CÉREBRO: Compara o que a câmera leu com a rota do Google
+function buscarPacoteNaRota(enderecoLido) {
+    // Tira acentos e coloca minúsculo para a busca ser à prova de falhas
+    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
+    const buscaNorm = normalize(enderecoLido);
+    const numeroMatch = buscaNorm.match(/\d{1,5}/);
+    const numero = numeroMatch ? numeroMatch[0] : null;
+
+    let melhorIndice = -1;
+    
+    // Varre todos os endereços da rota otimizada salva na memória
+    for (let i = 0; i < enderecosOtimizadosGlobal.length; i++) {
+        const endAlvo = normalize(enderecosOtimizadosGlobal[i]);
+        
+        // Verifica se o número do endereço bate (regra principal)
+        if (numero && endAlvo.includes(numero)) {
+            // Pega algumas palavras chave da rua lida
+            const palavrasBusca = buscaNorm.replace(/\d+/g, '').split(' ').filter(p => p.length > 3 && !['rua', 'avenida', 'travessa'].includes(p));
+            // Verifica se a rua lida bate com a rua da rota do Google
+            const temPalavra = palavrasBusca.some(p => endAlvo.includes(p));
+            
+            if (temPalavra || palavrasBusca.length === 0) {
+                melhorIndice = i;
+                break; // Achou o pacote!
+            }
+        }
+    }
+
+    // Mostra o resultado na tela pro motorista
+    mostrarResultadoBusca(melhorIndice, enderecoLido);
+}
+
+// 📺 TELA GIGANTE COM O RESULTADO DA BUSCA
+function mostrarResultadoBusca(indice, lido) {
+    let div = document.createElement('div');
+    div.style = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.95);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;text-align:center;padding:20px;";
+    
+    if (indice !== -1) {
+        // Se for o destino final, coloca um texto diferente
+        let textoParada = (indice === enderecosOtimizadosGlobal.length - 1) ? "DESTINO FINAL" : `PARADA ${indice + 1}`;
+        
+        div.innerHTML = `
+            <div style="font-size: 60px; margin-bottom: 20px;">📦</div>
+            <h2 style="color:#22c55e;font-size:24px;margin:0;">Pacote Encontrado na Rota!</h2>
+            <h1 style="font-size:70px;margin:20px 0;color:#facc15;text-shadow: 2px 2px 0 #000;">${textoParada}</h1>
+            <p style="font-size:16px;color:#cbd5e1;background:#333;padding:10px;border-radius:8px;"><strong>Lido:</strong> ${lido}</p>
+            <button style="margin-top:40px;padding:15px 50px;font-size:20px;background:#3b82f6;border:none;border-radius:12px;color:white;cursor:pointer;font-weight:bold;box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);" onclick="this.parentElement.remove()">OK, PRÓXIMO</button>
+        `;
+    } else {
+        div.innerHTML = `
+            <div style="font-size: 60px; margin-bottom: 20px;">❓</div>
+            <h2 style="color:#ef4444;font-size:24px;margin:0;">Pacote Não Identificado</h2>
+            <p style="font-size:16px;color:#cbd5e1;margin:20px 0;">O endereço lido (${lido}) não parece pertencer a nenhuma parada da sua rota atual.</p>
+            <button style="margin-top:40px;padding:15px 40px;font-size:20px;background:#64748b;border:none;border-radius:12px;color:white;cursor:pointer;font-weight:bold;" onclick="this.parentElement.remove()">Tentar Novamente</button>
+        `;
+    }
+    document.body.appendChild(div);
+}
+
+// O Parâmetro 'modo' decide se a câmera vai preencher o campo ou buscar o pacote
+async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     let modal = document.getElementById("modal-scanner");
     
     if (!modal) {
@@ -266,7 +299,12 @@ async function abrirScannerInteligente(inputAlvo) {
 
     try {
         if (!workerTesseract) { workerTesseract = await Tesseract.createWorker('por'); }
-        textStatus.innerHTML = "<span style='color: white;'>Mire no CEP ou Endereço...</span>";
+        // Muda o texto dependendo de onde o motorista apertou
+        if(modo === 'busca') {
+            textStatus.innerHTML = "<span style='color: #22c55e;'>Localizador Ativo: Mire no Endereço do Pacote</span>";
+        } else {
+            textStatus.innerHTML = "<span style='color: white;'>Mire no Endereço para Adicionar Parada</span>";
+        }
     } catch(e) { textStatus.innerText = "Erro ao carregar OCR."; return; }
 
     const processarQuadroAoVivo = async () => {
@@ -292,23 +330,23 @@ async function abrirScannerInteligente(inputAlvo) {
             const { data: { text } } = await workerTesseract.recognize(canvas);
             if (!scannerAtivo) return; 
 
-            // Passa o texto extraído pelo Cão Farejador (Regex)
             const enderecoLocalizado = extrairEnderecoAvancado(text);
 
             if (enderecoLocalizado) {
-                tocarBeep(); // Apita
-                fecharTudo(); // Fecha câmera
+                tocarBeep(); 
+                fecharTudo(); 
                 
-                // Formata primeira letra maiúscula e joga pro Geocoding (Autocomplete)
-                inputAlvo.value = enderecoLocalizado.charAt(0).toUpperCase() + enderecoLocalizado.slice(1);
-                
-                // Dispara o evento de foco para acordar a API do Google Maps
-                inputAlvo.focus(); 
-                const event = new Event('input', { bubbles: true });
-                inputAlvo.dispatchEvent(event);
+                // MÁGICA DE ROTASAMNTO: Preenche o Input OU Faz a Busca!
+                if (modo === 'input') {
+                    inputAlvo.value = enderecoLocalizado.charAt(0).toUpperCase() + enderecoLocalizado.slice(1);
+                    inputAlvo.focus(); 
+                    const event = new Event('input', { bubbles: true });
+                    inputAlvo.dispatchEvent(event);
+                } else if (modo === 'busca') {
+                    buscarPacoteNaRota(enderecoLocalizado);
+                }
 
             } else {
-                // Se leu lixo, ignora e tenta de novo rápido
                 setTimeout(processarQuadroAoVivo, 500); 
             }
         } catch (err) {
@@ -375,7 +413,6 @@ function criarNovaParada() {
         recognition.start();
     };
 
-    // Botão Câmera Inteligente
     const btnCam = document.createElement("button");
     btnCam.className = "btn-camera";
     btnCam.innerText = "📸";
@@ -387,7 +424,7 @@ function criarNovaParada() {
             return;
         }
         iniciarAudioMobile(); 
-        abrirScannerInteligente(input); 
+        abrirScannerInteligente(input, 'input'); // Modo preenchimento
     };
 
     const btnRemover = document.createElement("button");
@@ -463,6 +500,20 @@ async function calcularRotaOtimizada() {
 function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
     const divLista = document.getElementById("lista-paradas");
     divLista.innerHTML = "<h3>📱 Rota Pronta:</h3>";
+    
+    // Grava a rota finalizada na memória para o Localizador de Pacotes
+    enderecosOtimizadosGlobal = result.routes[0].legs.map(leg => leg.end_address);
+
+    // 🌟 BOTÃO ESTRATÉGICO: Localizador de Pacotes
+    const btnBusca = document.createElement("button");
+    btnBusca.innerHTML = "📦 Bipar e Localizar Pacote";
+    btnBusca.style = "background: linear-gradient(90deg, #f59e0b, #d97706); color: white; padding: 18px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-bottom: 20px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 10px;";
+    btnBusca.onclick = () => {
+        if (!usuarioEhPro()) return alert("🔒 Recurso VIP: O Localizador de Pacotes é exclusivo do plano PRO!");
+        iniciarAudioMobile();
+        abrirScannerInteligente(null, 'busca'); // Abre a câmera no Modo Busca
+    };
+    divLista.appendChild(btnBusca);
     
     result.routes[0].legs.forEach((leg, i) => {
         let prazoTexto = "";
