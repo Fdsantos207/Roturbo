@@ -9,7 +9,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <script>
       if ('serviceWorker' in navigator) {
@@ -23,10 +23,9 @@
 </head>
 <body>
 
-    <div class="barra-superior">
-        <button id="btn-menu" class="btn-hamburguer">☰</button>
-        <h2 class="logo-texto">📍 Roturbo</h2>
-    </div>
+    <button id="btn-menu" class="btn-hamburguer">☰</button>
+
+    <div id="mapa"></div>
 
     <div id="menu-lateral" class="menu-lateral">
         <button id="btn-fechar-menu" class="btn-fechar">X</button>
@@ -44,21 +43,17 @@
     </div>
 
     <div id="painel-principal" class="painel-app">
-        <label>Ponto de Partida:</label>
-        <input type="text" id="origem" placeholder="Digite a origem...">
+        <div class="drag-handle"></div>
 
-        <label>Paradas:</label>
+        <input type="text" id="origem" placeholder="Meu local (Origem)...">
+
         <div id="container-paradas"></div>
-        <button id="btn-add-parada" type="button">+ Adicionar Parada</button>
+        <button id="btn-add-parada" class="btn-azul" type="button">+ Adicionar Parada</button>
 
-        <label>Destino Final:</label>
-        <input type="text" id="destino" placeholder="Digite o destino...">
+        <input type="text" id="destino" placeholder="Destino Final...">
 
-        <button id="btn-calcular">Otimizar Minha Rota</button>
+        <button id="btn-calcular" class="btn-verde">Otimizar Minha Rota</button>
 
-        <div id="mapa" style="height: 400px; width: 100%; border-radius: 10px; margin-top: 15px; background: #eee; display: flex; align-items: center; justify-content: center;">
-            Carregando mapa...
-        </div>
         <div id="lista-paradas"></div>
     </div>
 
