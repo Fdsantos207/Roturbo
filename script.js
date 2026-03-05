@@ -208,28 +208,57 @@ async function carregarHistorico() {
 }
 
 // ========================================================
-// NOVO SISTEMA: CÂMERA INTELIGENTE EM TEMPO REAL (SCANNER)
+// NOVO SISTEMA: CÂMERA DINÂMICA COM LEITURA AO VIVO E BIPE
 // ========================================================
 let streamCamera = null;
+let scannerAtivo = false;
+
+// Função nativa para criar um "Bipe" de scanner de supermercado
+function tocarBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 1046.50; // Frequência aguda (Nota C6)
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.15); // Bipe rápido
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+    } catch (e) { console.log("Áudio não suportado neste navegador"); }
+}
 
 async function abrirScannerInteligente(inputAlvo) {
-    // Cria o Modal do Scanner na tela
     let modal = document.getElementById("modal-scanner");
+    
+    // Adicionamos animação de varredura (laser verde) no CSS inline
     if (!modal) {
         modal = document.createElement("div");
         modal.id = "modal-scanner";
         modal.innerHTML = `
+            <style>
+                @keyframes scanline {
+                    0% { top: 0%; }
+                    50% { top: 100%; }
+                    100% { top: 0%; }
+                }
+                .laser {
+                    position: absolute; width: 100%; height: 2px; background: #22c55e;
+                    box-shadow: 0 0 10px #22c55e; animation: scanline 2s linear infinite;
+                }
+            </style>
             <div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000;">
                 <video id="video-scanner" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                 
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; height: 200px; border: 3px dashed #3b82f6; border-radius: 12px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);">
-                    <div style="position: absolute; top: -35px; width: 100%; text-align: center; color: white; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Mire na etiqueta do pacote</div>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; height: 200px; border: 3px solid rgba(255,255,255,0.3); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); overflow: hidden;">
+                    <div class="laser"></div>
                 </div>
                 
-                <div style="position: absolute; bottom: 40px; display: flex; gap: 30px; align-items: center;">
-                    <button id="btn-fechar-camera" style="background: #ef4444; width: 50px; height: 50px; border-radius: 50%; border: none; color: white; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✖</button>
-                    <button id="btn-capturar-camera" style="background: #3b82f6; width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; color: white; font-size: 28px; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">📸</button>
-                </div>
+                <div style="position: absolute; top: 15%; width: 100%; text-align: center; color: white; font-weight: bold; font-size: 18px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Mire no endereço do pacote...</div>
+                
+                <button id="btn-fechar-camera" style="position: absolute; bottom: 40px; background: #ef4444; padding: 12px 30px; border-radius: 30px; border: none; color: white; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✖ Cancelar</button>
             </div>
         `;
         modal.style.position = "fixed";
@@ -242,59 +271,74 @@ async function abrirScannerInteligente(inputAlvo) {
     }
 
     modal.style.display = "block";
+    scannerAtivo = true;
     const video = document.getElementById("video-scanner");
     const btnFechar = document.getElementById("btn-fechar-camera");
-    const btnCapturar = document.getElementById("btn-capturar-camera");
 
-    // Inicia a Câmera Traseira
+    // Inicia a Câmera
     try {
         streamCamera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         video.srcObject = streamCamera;
     } catch (err) {
-        alert("Erro ao acessar a câmera. Verifique as permissões do seu celular.");
+        alert("Erro ao acessar a câmera. Verifique as permissões.");
         modal.style.display = "none";
+        scannerAtivo = false;
         return;
     }
 
-    // Fechar Câmera
-    btnFechar.onclick = () => {
+    // Função de Fechar manual
+    const fecharTudo = () => {
+        scannerAtivo = false;
         if (streamCamera) streamCamera.getTracks().forEach(track => track.stop());
         modal.style.display = "none";
     };
+    btnFechar.onclick = fecharTudo;
 
-    // Bater a foto e analisar (OCR Tesseract)
-    btnCapturar.onclick = () => {
-        btnCapturar.innerText = "⏳";
-        btnCapturar.disabled = true;
-        
-        // "Tira um Print" do vídeo atual
+    // --- O CÉREBRO DA LEITURA AO VIVO ---
+    const processarQuadroAoVivo = () => {
+        // Se fechou a tela, para o loop
+        if (!scannerAtivo) return;
+
         const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        
+        // Se o vídeo ainda não carregou as dimensões, tenta de novo em 500ms
+        if (canvas.width === 0) {
+            setTimeout(processarQuadroAoVivo, 500);
+            return;
+        }
+
         const ctx = canvas.getContext("2d");
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL("image/jpeg");
-        
-        // Desliga a câmera e esconde o visor
-        if (streamCamera) streamCamera.getTracks().forEach(track => track.stop());
-        modal.style.display = "none";
-        inputAlvo.value = "Analisando pacote... 🔍";
+        const imageData = canvas.toDataURL("image/jpeg", 0.8);
 
-        // Manda pro Tesseract.js ler o texto
+        // Manda o "print fantasma" pro Tesseract
         Tesseract.recognize(imageData, 'por').then(({ data: { text } }) => {
-            // Limpa o texto lido para ficar bonitinho
+            if (!scannerAtivo) return; // Checagem dupla de segurança
+
             let textoLimpo = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-            inputAlvo.value = textoLimpo.substring(0, 60); // Joga no campo de endereço!
-            inputAlvo.focus(); // Aciona o Google Maps
-            btnCapturar.innerText = "📸";
-            btnCapturar.disabled = false;
+            
+            // Regra para identificar se é endereço: Mais de 8 letras e pelo menos 1 número
+            const temNumero = /\d/.test(textoLimpo);
+            if (textoLimpo.length >= 8 && temNumero) {
+                // ACHEI O ENDEREÇO!
+                tocarBeep(); // 🔊 Emite o bipe!
+                fecharTudo(); // ❌ Fecha a câmera automaticamente
+                inputAlvo.value = textoLimpo.substring(0, 60); // Preenche o input
+                inputAlvo.focus(); // Aciona o Google Maps
+            } else {
+                // Se não achou endereço, bate outra foto fantasma em 1 segundo
+                setTimeout(processarQuadroAoVivo, 1000); 
+            }
         }).catch(err => {
-            inputAlvo.value = "";
-            inputAlvo.placeholder = "Erro ao ler a etiqueta. Tente novamente.";
-            btnCapturar.innerText = "📸";
-            btnCapturar.disabled = false;
+            // Se der erro de leitura, tenta de novo
+            if (scannerAtivo) setTimeout(processarQuadroAoVivo, 1000);
         });
     };
+
+    // Dá 1 segundo para a câmera abrir e começar a ler
+    setTimeout(processarQuadroAoVivo, 1000);
 }
 // ========================================================
 
@@ -381,7 +425,7 @@ function criarNovaParada() {
         recognition.start();
     };
 
-    // --- NOVO: Botão Câmera Inteligente (Live Scanner) ---
+    // --- Botão Câmera Inteligente (Live Scanner) ---
     const btnCam = document.createElement("button");
     btnCam.className = "btn-camera";
     btnCam.innerText = "📸";
@@ -392,7 +436,7 @@ function criarNovaParada() {
             alert("📸 Recurso VIP: O Scanner Inteligente de Pacotes é exclusivo do plano PRO!");
             return;
         }
-        // Chama a nossa tela de Realidade Aumentada!
+        // Aciona o scanner que acabamos de criar!
         abrirScannerInteligente(input);
     };
 
@@ -402,7 +446,6 @@ function criarNovaParada() {
     btnRemover.className = "btn-remover-parada";
     btnRemover.onclick = () => containerParadas.removeChild(div);
 
-    // Observe que não precisamos mais daquele input "file" escondido!
     div.append(inputTempo, input, btnVoz, btnCam, btnRemover);
     containerParadas.appendChild(div);
     configurarAutocomplete(input);
