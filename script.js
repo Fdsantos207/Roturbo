@@ -93,7 +93,9 @@ window.iniciarMapa = function() {
     mapa = new google.maps.Map(document.getElementById("mapa"), {
         zoom: 12,
         center: centroInicial,
-        mapTypeId: google.maps.MapTypeId.ROADMAP
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        disableDefaultUI: true, // Deixa o mapa mais limpo
+        zoomControl: true
     });
     directionsService = new google.maps.DirectionsService();
     directionsRenderer = new google.maps.DirectionsRenderer();
@@ -120,8 +122,8 @@ async function abrirFinanceiro() {
     if (!usuarioEhPro()) return alert("🔒 Recurso VIP: Exclusivo para PRO.");
     resetarTelas(); document.getElementById("aba-financeiro").style.display = "block"; carregarResumoFinanceiro();
 }
-async function carregarResumoFinanceiro() { /* Original Mantido Internamente */ }
-async function carregarHistorico() { /* Original Mantido Internamente */ }
+async function carregarResumoFinanceiro() { /* Lógica mantida no banco */ }
+async function carregarHistorico() { /* Lógica mantida no banco */ }
 
 let streamCamera = null;
 let scannerAtivo = false;
@@ -205,7 +207,7 @@ function mostrarResultadoBusca(indice, lido) {
             <h2 style="color:#22c55e;font-size:24px;margin:0;">Pacote Encontrado na Rota!</h2>
             <h1 style="font-size:70px;margin:20px 0;color:#facc15;text-shadow: 2px 2px 0 #000;">${textoParada}</h1>
             <p style="font-size:16px;color:#cbd5e1;background:#333;padding:10px;border-radius:8px;"><strong>Lido:</strong> ${lido}</p>
-            <button style="margin-top:40px;padding:15px 50px;font-size:20px;background:#3b82f6;border:none;border-radius:12px;color:white;cursor:pointer;font-weight:bold;box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);" onclick="this.parentElement.remove()">OK, PRÓXIMO</button>
+            <button style="margin-top:40px;padding:15px 50px;font-size:20px;background:#2563eb;border:none;border-radius:12px;color:white;cursor:pointer;font-weight:bold;box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);" onclick="this.parentElement.remove()">OK, PRÓXIMO</button>
         `;
     } else {
         div.innerHTML = `
@@ -219,11 +221,11 @@ function mostrarResultadoBusca(indice, lido) {
 }
 
 // ========================================================
-// NOVO DESIGN DA CÂMERA (COM BANNER DE CONFIRMAÇÃO)
+// NOVO DESIGN DA CÂMERA (COM BANNER DE CONFIRMAÇÃO ESTILO APP)
 // ========================================================
 async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     let modal = document.getElementById("modal-scanner");
-    let emPausa = false; // Controle para pausar a câmera e exibir o banner
+    let emPausa = false; 
     
     if (!modal) {
         modal = document.createElement("div");
@@ -241,17 +243,19 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
                         <div style="position:absolute; bottom:0; right:0; width:40px; height:40px; border-bottom: 4px solid white; border-right: 4px solid white; border-bottom-right-radius: 16px;"></div>
                     </div>
 
-                    <div id="status-scanner" style="position: absolute; top: 20%; width: 100%; text-align: center; color: white; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Mire no endereço do pacote...</div>
+                    <div id="status-scanner" style="position: absolute; top: 15%; width: 100%; text-align: center; color: white; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Mire no endereço do pacote...</div>
                 </div>
                 
                 <button id="btn-fechar-camera" style="position: absolute; top: 40px; left: 20px; width: 45px; height: 45px; border-radius: 50%; background: rgba(0,0,0,0.4); color: white; border: none; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">✕</button>
 
-                <div id="banner-confirmacao" style="position: absolute; bottom: 0; left: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 24px 20px 40px 20px; box-sizing: border-box; transform: translateY(100%); transition: transform 0.3s ease-out; box-shadow: 0 -10px 20px rgba(0,0,0,0.1);">
+                <div id="banner-confirmacao" style="position: absolute; bottom: 0; left: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 24px 20px 40px 20px; box-sizing: border-box; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 -10px 20px rgba(0,0,0,0.15);">
                     <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 20px;">
-                        <div style="font-size: 24px; color: #64748b; background: #f1f5f9; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">📍</div>
+                        <div style="font-size: 24px; color: #64748b; background: #f1f5f9; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#64748b"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                        </div>
                         <div style="flex: 1;">
                             <h3 id="texto-endereco-lido" style="margin: 0; color: #0f172a; font-size: 18px; font-weight: 700; line-height: 1.2;">-</h3>
-                            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Capturado pelo Scanner IA</p>
+                            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Capturado pelo Scanner</p>
                         </div>
                     </div>
                     
@@ -274,8 +278,8 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
 
     modal.style.display = "block";
     scannerAtivo = true;
-    emPausa = false; // Garante que começa rodando
-    document.getElementById("banner-confirmacao").style.transform = "translateY(100%)"; // Esconde o banner
+    emPausa = false; 
+    document.getElementById("banner-confirmacao").style.transform = "translateY(100%)"; 
     
     const video = document.getElementById("video-scanner");
     const btnFechar = document.getElementById("btn-fechar-camera");
@@ -283,7 +287,6 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     const btnConfirmar = document.getElementById("btn-confirmar-parada");
     const btnRecusar = document.getElementById("btn-recusar-parada");
 
-    // Muda o texto do botão baseado no modo
     btnConfirmar.innerText = modo === 'busca' ? "Localizar este Pacote" : "Adicionar parada";
 
     try {
@@ -304,16 +307,14 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
         modal.style.display = "none";
     };
     
-    // O clique no X ou fechar tudo
     btnFechar.onclick = fecharTudo;
 
     try {
         if (!workerTesseract) { workerTesseract = await Tesseract.createWorker('por'); }
-        textStatus.innerText = "Mire na etiqueta do endereço...";
+        textStatus.innerText = "Mire no endereço do pacote...";
     } catch(e) { textStatus.innerText = "Erro ao carregar IA."; return; }
 
     const processarQuadroAoVivo = async () => {
-        // Se a câmera foi fechada ou o banner está na tela (emPausa), interrompe a IA!
         if (!scannerAtivo || !workerTesseract || emPausa) return;
 
         const canvas = document.createElement("canvas");
@@ -339,19 +340,17 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
             const enderecoLocalizado = extrairEnderecoAvancado(text);
 
             if (enderecoLocalizado) {
-                // A IA ACHOU O ENDEREÇO!
                 tocarBeep(); 
-                emPausa = true; // Pausa a câmera
+                emPausa = true; 
                 
                 const textoFinal = enderecoLocalizado.charAt(0).toUpperCase() + enderecoLocalizado.slice(1);
                 
-                // Preenche o Banner e sobe ele na tela
+                // Preenche a Bottom Sheet e sobe ela
                 document.getElementById("texto-endereco-lido").innerText = textoFinal;
                 document.getElementById("banner-confirmacao").style.transform = "translateY(0)";
 
-                // Ação 1: O motorista CLICOU NO BOTÃO AZUL
                 btnConfirmar.onclick = () => {
-                    fecharTudo(); // Fecha a câmera inteira
+                    fecharTudo();
                     if (modo === 'input') {
                         inputAlvo.value = textoFinal;
                         inputAlvo.focus(); 
@@ -362,11 +361,10 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
                     }
                 };
 
-                // Ação 2: O motorista CLICOU EM "TENTAR DE NOVO"
                 btnRecusar.onclick = () => {
-                    document.getElementById("banner-confirmacao").style.transform = "translateY(100%)"; // Esconde banner
-                    emPausa = false; // Despausa a IA
-                    setTimeout(processarQuadroAoVivo, 500); // Volta a ler a câmera
+                    document.getElementById("banner-confirmacao").style.transform = "translateY(100%)"; 
+                    emPausa = false; 
+                    setTimeout(processarQuadroAoVivo, 500); 
                 };
 
             } else {
@@ -379,9 +377,10 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     
     setTimeout(processarQuadroAoVivo, 1500);
 }
-// ========================================================
 
-// --- FUNÇÃO PARA CRIAR PARADAS NO MAPA ---
+// ========================================================
+// NOVA BARRA DE PESQUISA (LAYOUT GOOGLE MAPS DA IMAGEM)
+// ========================================================
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const numeroDeParadasAtuais = containerParadas.children.length;
@@ -394,37 +393,67 @@ function criarNovaParada() {
     const div = document.createElement("div");
     div.className = "parada-grupo";
     
-    const linha1 = document.createElement("div");
-    linha1.className = "parada-linha-principal";
+    // --- BARRA PRINCIPAL (PÍLULA) ---
+    const barra = document.createElement("div");
+    barra.className = "barra-pesquisa-moderna";
 
-    const iconeBusca = document.createElement("span");
-    iconeBusca.className = "icone-busca";
-    iconeBusca.innerText = "🔍";
-
+    // SVG Lupa
+    const iconLupa = document.createElement("div");
+    iconLupa.innerHTML = `<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>`;
+    
     const input = document.createElement("input");
     input.type = "text";
-    input.className = "input-parada";
     input.placeholder = "Toque para adicionar";
 
+    // SVG Scanner (Câmera)
+    const btnCam = document.createElement("button");
+    btnCam.className = "btn-acao-icone";
+    btnCam.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 5v4h2V5h4V3H5c-1.1 0-2 .9-2 2zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/><path d="M7 11h10v2H7z"/></svg>`;
+    btnCam.onclick = () => {
+        if (!usuarioEhPro()) return alert("📸 Recurso VIP: Exclusivo plano PRO!");
+        iniciarAudioMobile(); 
+        abrirScannerInteligente(input, 'input'); 
+    };
+
+    // SVG Microfone
+    const btnVoz = document.createElement("button");
+    btnVoz.className = "btn-acao-icone";
+    btnVoz.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>`;
+    btnVoz.onclick = () => {
+        if (!usuarioEhPro()) return alert("🎤 Recurso VIP: Exclusivo plano PRO!");
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return alert("Seu navegador não suporta voz nativa.");
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.onstart = () => { input.placeholder = "Ouvindo..."; };
+        recognition.onresult = (event) => { input.value = event.results[0][0].transcript; input.focus(); };
+        recognition.onerror = () => { input.placeholder = "Toque para adicionar"; };
+        recognition.start();
+    };
+
+    // SVG 3 Pontinhos (Para Remover)
     const btnRemover = document.createElement("button");
-    btnRemover.innerText = "×";
-    btnRemover.className = "btn-remover-parada";
+    btnRemover.className = "btn-acao-icone";
+    btnRemover.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
     btnRemover.onclick = () => containerParadas.removeChild(div);
 
-    linha1.append(iconeBusca, input, btnRemover);
+    barra.append(iconLupa, input, btnCam, btnVoz, btnRemover);
 
-    const linha2 = document.createElement("div");
-    linha2.className = "parada-linha-ferramentas";
-
-    const tempoWrapper = document.createElement("div");
-    tempoWrapper.className = "tempo-wrapper";
-    const iconeTempo = document.createElement("span");
-    iconeTempo.innerText = "⏰";
+    // --- LINHA EXTRA: O Relógio Discreto em baixo ---
+    const linhaExtras = document.createElement("div");
+    linhaExtras.className = "linha-extras";
     
     const inputTempo = document.createElement("input");
     inputTempo.type = "time";
     inputTempo.className = "input-tempo";
-    inputTempo.title = "Horário Limite de Chegada";
+    inputTempo.title = "Horário Limite";
+    // Deixa o reloginho discreto e combinando com a pílula
+    inputTempo.style.background = "#e2e8f0";
+    inputTempo.style.padding = "4px 8px";
+    inputTempo.style.borderRadius = "12px";
+    inputTempo.style.border = "none";
+    inputTempo.style.fontSize = "13px";
+    inputTempo.style.color = "#475569";
 
     inputTempo.addEventListener("click", (e) => {
         if (!usuarioEhPro()) {
@@ -434,54 +463,14 @@ function criarNovaParada() {
         }
     });
 
-    tempoWrapper.append(iconeTempo, inputTempo);
+    linhaExtras.append(inputTempo);
 
-    const acoesDireita = document.createElement("div");
-    acoesDireita.className = "acoes-direita";
-
-    const btnVoz = document.createElement("button");
-    btnVoz.innerText = "🎤";
-    btnVoz.className = "btn-microfone";
-    btnVoz.type = "button";
-    
-    btnVoz.onclick = () => {
-        if (!usuarioEhPro()) {
-            alert("🎤 Recurso VIP: A digitação por voz é exclusiva do plano PRO!");
-            return;
-        }
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) { return alert("O seu navegador não suporta voz nativa."); }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'pt-BR';
-        recognition.onstart = () => { input.placeholder = "Ouvindo..."; btnVoz.style.color = "#ef4444"; };
-        recognition.onresult = (event) => { input.value = event.results[0][0].transcript; btnVoz.style.color = "#475569"; input.focus(); };
-        recognition.onerror = () => { input.placeholder = "Toque para adicionar"; btnVoz.style.color = "#475569"; };
-        recognition.start();
-    };
-
-    const btnCam = document.createElement("button");
-    btnCam.className = "btn-camera";
-    btnCam.innerText = "📸";
-    btnCam.type = "button";
-
-    btnCam.onclick = () => {
-        if (!usuarioEhPro()) {
-            alert("📸 Recurso VIP: O Scanner Inteligente de Pacotes é exclusivo do plano PRO!");
-            return;
-        }
-        iniciarAudioMobile(); 
-        abrirScannerInteligente(input, 'input'); 
-    };
-
-    acoesDireita.append(btnCam, btnVoz);
-    linha2.append(tempoWrapper, acoesDireita);
-
-    div.append(linha1, linha2);
+    div.append(barra, linhaExtras);
     containerParadas.appendChild(div);
     configurarAutocomplete(input);
 }
 
+// --- EVENTOS DE INTERFACE E ROTA ---
 document.addEventListener("DOMContentLoaded", function() {
     const btnMenu = document.getElementById("btn-menu");
     const btnFecharMenu = document.getElementById("btn-fechar-menu");

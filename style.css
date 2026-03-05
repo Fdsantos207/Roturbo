@@ -177,3 +177,136 @@ input:focus { outline: none; border-color: #3b82f6; background: #fff; }
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
     background: #f4f4f9; z-index: 15; padding: 20px; box-sizing: border-box; overflow-y: auto;
 }
+
+/* =========================================
+   NOVA BARRA DE PESQUISA (Estilo App de Logística)
+   ========================================= */
+.parada-grupo {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    margin-bottom: 15px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.barra-pesquisa-moderna {
+    display: flex;
+    align-items: center;
+    background-color: #f1f5f9; /* Fundo cinza claro idêntico à imagem */
+    border-radius: 12px;
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.barra-pesquisa-moderna svg {
+    width: 24px;
+    height: 24px;
+    fill: #64748b;
+    flex-shrink: 0;
+}
+
+.barra-pesquisa-moderna input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    color: #1e293b;
+    padding: 10px 10px;
+    margin: 0;
+    outline: none;
+    box-shadow: none;
+    font-weight: 500;
+}
+
+.barra-pesquisa-moderna input::placeholder {
+    color: #64748b;
+}
+
+.btn-acao-icone {
+    background: transparent !important;
+    border: none;
+    padding: 6px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    width: auto !important;
+    transition: 0.2s;
+    border-radius: 50%;
+}
+.btn-acao-icone:hover { background: #e2e8f0 !important; }
+.btn-acao-icone:hover svg { fill: #2563eb; }
+
+.linha-extras {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 12px;
+}
+
+/* =========================================
+   BOTTOM SHEET (Confirmação da Câmera)
+   ========================================= */
+.bottom-sheet-camera {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 30px 20px;
+    box-sizing: border-box;
+    transform: translateY(100%); /* Fica escondido para baixo */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10001;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+}
+
+.bottom-sheet-camera.visivel {
+    transform: translateY(0); /* Sobe para a tela */
+}
+
+.bs-cabecalho {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.bs-icone {
+    background: #f1f5f9;
+    padding: 10px;
+    border-radius: 12px;
+}
+
+.bs-textos h3 {
+    margin: 0 0 4px 0;
+    font-size: 18px;
+    color: #0f172a;
+}
+
+.bs-textos p {
+    margin: 0;
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.btn-azul-gigante {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: bold;
+    width: 100%;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
