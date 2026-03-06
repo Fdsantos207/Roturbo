@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+// A importação foi unificada para evitar erros no navegador
+import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, collection, addDoc, getDocs, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -29,7 +30,39 @@ function usuarioEhPro() {
     return dadosUsuario.plano.toLowerCase().trim() === "pro";
 }
 
+// ==========================================
+// LÓGICA DE RECUPERAÇÃO DE SENHA (LOGIN)
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+    const btnRecuperar = document.getElementById('btn-recuperar-senha');
+    if (btnRecuperar) {
+        btnRecuperar.onclick = () => {
+            const campoEmail = document.getElementById('c-email');
+            if (!campoEmail) return;
+
+            const emailDigitado = campoEmail.value.trim();
+            if (!emailDigitado) {
+                alert("⚠️ Por favor, digite o seu e-mail no campo acima e clique em 'Esqueci minha senha' novamente.");
+                return;
+            }
+
+            // Envia o e-mail de redefinição pelo Firebase
+            sendPasswordResetEmail(auth, emailDigitado)
+                .then(() => {
+                    alert(`✅ Um link para criar uma nova senha foi enviado para: ${emailDigitado}\n\nVerifique a sua caixa de entrada e a pasta de SPAM.`);
+                })
+                .catch((error) => {
+                    alert("❌ Erro: " + error.message);
+                });
+        };
+    }
+});
+
+// --- VERIFICAÇÃO DE LOGIN ---
 onAuthStateChanged(auth, async (user) => {
+    // Se estivermos na página de login, não faz redirecionamento
+    if (window.location.href.includes("login.html")) return;
+
     if (user) {
         usuarioLogado = user;
         const docRef = doc(db, "usuarios", user.uid);
@@ -175,51 +208,41 @@ function extrairEnderecoAvancado(textoBruto) {
     return null; 
 }
 
-// ========================================================
 // 🧠 NOVO CÉREBRO DE BUSCA (À PROVA DE ERROS)
-// ========================================================
 function buscarPacoteNaRota(enderecoLido) {
-    // 1. Tira acentos e padroniza para letras minúsculas
     const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const buscaNorm = normalize(enderecoLido);
     
-    // 2. Extrai de forma inteligente apenas o NÚMERO DA PORTA (Ignora CEPs)
-    const textoSemCep = buscaNorm.replace(/\b\d{5}-?\d{3}\b/g, ''); // Tira o CEP se houver
+    const textoSemCep = buscaNorm.replace(/\b\d{5}-?\d{3}\b/g, ''); 
     const matchNum = textoSemCep.match(/\b\d{1,5}\b/);
     const numeroLido = matchNum ? matchNum[0] : null;
 
-    // 3. Remove "lixo" (palavras que o Google mete em todas as paradas)
     const palavrasLixo = ['rua', 'avenida', 'av', 'travessa', 'alameda', 'praca', 'vila', 'sao', 'paulo', 'brasil', 'sp', 'estado', 'cep', 'de', 'da', 'do', 'das', 'dos'];
     const palavrasLidas = textoSemCep.replace(/[^\w\s]/gi, ' ').split(/\s+/).filter(p => p.length > 2 && !palavrasLixo.includes(p) && !/\d/.test(p)); 
 
     let melhorIndice = -1;
     let maiorPontuacao = 0;
 
-    // 4. Varre todas as paradas que o Google Maps gerou
     for (let i = 0; i < enderecosOtimizadosGlobal.length; i++) {
         const endAlvo = normalize(enderecosOtimizadosGlobal[i]);
         let pontuacao = 0;
         
-        // REGRA DE OURO: Se o número da porta estiver nesta morada, ganha 50 pontos logo à partida!
         if (numeroLido && endAlvo.match(new RegExp("\\b" + numeroLido + "\\b"))) {
             pontuacao += 50; 
         }
 
-        // Soma pontos se os nomes peculiares da rua baterem certo
         palavrasLidas.forEach(palavra => {
             if (endAlvo.includes(palavra)) {
                 pontuacao += 15; 
             }
         });
 
-        // Atualiza a Parada Vencedora
         if (pontuacao > maiorPontuacao) {
             maiorPontuacao = pontuacao;
             melhorIndice = i;
         }
     }
 
-    // Antifraude: Se a pontuação for muito baixa (não achou o número nem nomes chave), diz que não encontrou
     if (maiorPontuacao < 15) { melhorIndice = -1; }
     
     mostrarResultadoBusca(melhorIndice, enderecoLido);
@@ -250,7 +273,7 @@ function mostrarResultadoBusca(indice, lido) {
 }
 
 // ========================================================
-// DESIGN DA CÂMERA (MANTIDO)
+// DESIGN DA CÂMERA (COM BANNER ESTILO APP)
 // ========================================================
 async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     let modal = document.getElementById("modal-scanner");
@@ -402,9 +425,6 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     setTimeout(processarQuadroAoVivo, 1500);
 }
 
-// ========================================================
-// BARRA DE PESQUISA 
-// ========================================================
 function criarNovaParada() {
     const containerParadas = document.getElementById("container-paradas");
     const numeroDeParadasAtuais = containerParadas.children.length;
@@ -513,9 +533,6 @@ document.addEventListener("DOMContentLoaded", function() {
     if (btnCalcular) btnCalcular.addEventListener("click", calcularRotaOtimizada);
 });
 
-// ========================================================
-// SELETOR DE NAVEGAÇÃO E LÓGICA DE MAPAS
-// ========================================================
 function abrirSeletorNavegacao(enderecoDestino, botaoOrigem, numeroParada) {
     let modal = document.getElementById("modal-nav-app");
     
