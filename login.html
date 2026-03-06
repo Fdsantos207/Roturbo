@@ -46,10 +46,10 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        // ⚠️ ADICIONEI AQUI O sendPasswordResetEmail PARA FUNCIONAR A RECUPERAÇÃO ⚠️
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // COLOQUE SUAS CHAVES AQUI:
         const firebaseConfig = {
             apiKey: "AIzaSyBceowtEvmh9YJTLpeGR2rYnOSjmXRjH_U",
             authDomain: "roturbo.firebaseapp.com",
@@ -64,7 +64,9 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Lógica de Cadastro
+        // ==========================================
+        // 1. LÓGICA DE CADASTRO
+        // ==========================================
         document.getElementById('btnSalvar').onclick = async () => {
             const nome = document.getElementById('nome').value;
             const cel = document.getElementById('celular').value;
@@ -82,15 +84,17 @@
                     nome: nome,
                     celular: cel,
                     email: email,
-                    plano: "pro", // Dá o plano PRO de presente inicial
-                    vencimento: dataFutura.getTime(), // Salva a data de validade no banco
+                    plano: "pro", 
+                    vencimento: dataFutura.getTime(), 
                     status: "ativo"
                 });
                 window.location.href = "index.html";
             } catch (e) { alert("Erro: " + e.message); }
         };
 
-        // Lógica de Login
+        // ==========================================
+        // 2. LÓGICA DE LOGIN
+        // ==========================================
         document.getElementById('btnEntrar').onclick = async () => {
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
@@ -99,7 +103,34 @@
                 window.location.href = "index.html";
             } catch (e) { alert("Dados incorretos!"); }
         };
+
+        // ==========================================
+        // 3. LÓGICA DE RECUPERAR SENHA (NOVO)
+        // ==========================================
+        document.getElementById('btn-recuperar-senha').onclick = () => {
+            // Pega o que o usuário digitou no campo de E-mail do Login
+            const emailDigitado = document.getElementById('email').value.trim();
+
+            if (!emailDigitado) {
+                alert("⚠️ Por favor, digite o seu e-mail no campo acima e depois clique em 'Esqueci minha senha'.");
+                return;
+            }
+
+            // Dispara o email oficial do Firebase
+            sendPasswordResetEmail(auth, emailDigitado)
+                .then(() => {
+                    alert(`✅ Sucesso! Um link seguro para criar uma nova senha foi enviado para:\n${emailDigitado}\n\nPeça para verificar a caixa de entrada ou a pasta de SPAM.`);
+                })
+                .catch((error) => {
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
+                        alert("❌ Este e-mail não está cadastrado no sistema.");
+                    } else {
+                        alert("❌ Erro: " + error.message);
+                    }
+                });
+        };
     </script>
+
     <script>
         function alternar() {
             const login = document.getElementById('box-login');
@@ -118,7 +149,6 @@
             
             const banner = document.createElement('div');
             
-            // ESTILO NOVO: Pílula flutuante, branca, com sombra suave no topo da tela
             banner.style = "background: #ffffff; color: #333; padding: 12px 16px; text-align: center; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 350px; z-index: 9999; cursor: pointer; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 14px; border: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: center; gap: 8px;";
             
             banner.innerHTML = "<strong>📲 Baixar o App Roturbo</strong>";
