@@ -273,7 +273,7 @@ function mostrarResultadoBusca(indice, lido) {
 }
 
 // ========================================================
-// DESIGN DA CÂMERA (COM BANNER ESTILO APP)
+// DESIGN DA CÂMERA ANIMADA (EFEITO "CIRCUIT" LOCK-ON)
 // ========================================================
 async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     let modal = document.getElementById("modal-scanner");
@@ -283,29 +283,64 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
         modal = document.createElement("div");
         modal.id = "modal-scanner";
         modal.innerHTML = `
+            <style>
+                /* Animação do Laser */
+                @keyframes scan { 0% { top: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+                
+                /* O Segredo do Efeito Circuit (Bounce/Elástico) */
+                #mira-scanner {
+                    position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+                    width: 85%; height: 250px;
+                    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); /* Efeito de mola */
+                    background: transparent;
+                }
+                
+                /* Estado quando a IA ACHA o endereço */
+                #mira-scanner.lock-on {
+                    width: 60%; height: 100px; /* Encolhe o quadrado */
+                }
+
+                /* Bordas da mira */
+                .corner { position: absolute; width: 40px; height: 40px; transition: border-color 0.3s ease; }
+                .corner.tl { top: 0; left: 0; border-top: 4px solid white; border-left: 4px solid white; border-top-left-radius: 16px; }
+                .corner.tr { top: 0; right: 0; border-top: 4px solid white; border-right: 4px solid white; border-top-right-radius: 16px; }
+                .corner.bl { bottom: 0; left: 0; border-bottom: 4px solid white; border-left: 4px solid white; border-bottom-left-radius: 16px; }
+                .corner.br { bottom: 0; right: 0; border-bottom: 4px solid white; border-right: 4px solid white; border-bottom-right-radius: 16px; }
+
+                /* Fica Verde no Lock-on */
+                #mira-scanner.lock-on .corner { border-color: #22c55e; }
+                
+                #laser-linha {
+                    position: absolute; width: 100%; height: 2px; background: #2563eb;
+                    box-shadow: 0 0 10px #2563eb; animation: scan 2s infinite linear;
+                }
+                #mira-scanner.lock-on #laser-linha { display: none; /* Some o laser quando acha */ }
+            </style>
+
             <div style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden;">
                 <video id="video-scanner" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                 
                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 0 2000px rgba(0,0,0,0.5); pointer-events: none;">
-                    <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 80%; height: 250px; background: transparent;">
-                        <div style="position:absolute; top:0; left:0; width:40px; height:40px; border-top: 4px solid white; border-left: 4px solid white; border-top-left-radius: 16px;"></div>
-                        <div style="position:absolute; top:0; right:0; width:40px; height:40px; border-top: 4px solid white; border-right: 4px solid white; border-top-right-radius: 16px;"></div>
-                        <div style="position:absolute; bottom:0; left:0; width:40px; height:40px; border-bottom: 4px solid white; border-left: 4px solid white; border-bottom-left-radius: 16px;"></div>
-                        <div style="position:absolute; bottom:0; right:0; width:40px; height:40px; border-bottom: 4px solid white; border-right: 4px solid white; border-bottom-right-radius: 16px;"></div>
+                    
+                    <div id="mira-scanner">
+                        <div class="corner tl"></div>
+                        <div class="corner tr"></div>
+                        <div class="corner bl"></div>
+                        <div class="corner br"></div>
+                        <div id="laser-linha"></div>
                     </div>
-                    <div id="status-scanner" style="position: absolute; top: 15%; width: 100%; text-align: center; color: white; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Mire no endereço do pacote...</div>
+
+                    <div id="status-scanner" style="position: absolute; top: 15%; width: 100%; text-align: center; color: white; font-weight: bold; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); transition: color 0.3s;">Mire no endereço do pacote...</div>
                 </div>
                 
                 <button id="btn-fechar-camera" style="position: absolute; top: 40px; left: 20px; width: 45px; height: 45px; border-radius: 50%; background: rgba(0,0,0,0.4); color: white; border: none; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">✕</button>
 
                 <div id="banner-confirmacao" style="position: absolute; bottom: 0; left: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 24px 20px 40px 20px; box-sizing: border-box; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 -10px 20px rgba(0,0,0,0.15);">
                     <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 20px;">
-                        <div style="font-size: 24px; color: #64748b; background: #f1f5f9; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#64748b"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                        </div>
+                        <div style="font-size: 24px; color: #64748b; background: #f1f5f9; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">📍</div>
                         <div style="flex: 1;">
                             <h3 id="texto-endereco-lido" style="margin: 0; color: #0f172a; font-size: 18px; font-weight: 700; line-height: 1.2;">-</h3>
-                            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Capturado pelo Scanner</p>
+                            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Capturado pelo Scanner IA</p>
                         </div>
                     </div>
                     <button id="btn-confirmar-parada" style="background: #2563eb; color: white; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">Adicionar parada</button>
@@ -327,11 +362,15 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
     modal.style.display = "block";
     scannerAtivo = true;
     emPausa = false; 
+    
+    // Reseta tudo ao abrir
     document.getElementById("banner-confirmacao").style.transform = "translateY(100%)"; 
+    document.getElementById("mira-scanner").classList.remove("lock-on");
+    document.getElementById("status-scanner").innerText = "Mire no endereço do pacote...";
+    document.getElementById("status-scanner").style.color = "white";
     
     const video = document.getElementById("video-scanner");
     const btnFechar = document.getElementById("btn-fechar-camera");
-    const textStatus = document.getElementById("status-scanner");
     const btnConfirmar = document.getElementById("btn-confirmar-parada");
     const btnRecusar = document.getElementById("btn-recusar-parada");
 
@@ -359,8 +398,7 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
 
     try {
         if (!workerTesseract) { workerTesseract = await Tesseract.createWorker('por'); }
-        textStatus.innerText = "Mire no endereço do pacote...";
-    } catch(e) { textStatus.innerText = "Erro ao carregar IA."; return; }
+    } catch(e) { document.getElementById("status-scanner").innerText = "Erro ao carregar IA."; return; }
 
     const processarQuadroAoVivo = async () => {
         if (!scannerAtivo || !workerTesseract || emPausa) return;
@@ -388,14 +426,24 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
             const enderecoLocalizado = extrairEnderecoAvancado(text);
 
             if (enderecoLocalizado) {
+                // IA ACHOU O ENDEREÇO!
                 tocarBeep(); 
                 emPausa = true; 
                 
                 const textoFinal = enderecoLocalizado.charAt(0).toUpperCase() + enderecoLocalizado.slice(1);
                 
-                document.getElementById("texto-endereco-lido").innerText = textoFinal;
-                document.getElementById("banner-confirmacao").style.transform = "translateY(0)";
+                // 1. DISPARA O EFEITO CIRCUIT NA TELA (Mira encolhe e fica verde)
+                document.getElementById("mira-scanner").classList.add("lock-on");
+                document.getElementById("status-scanner").innerText = "Endereço Detectado!";
+                document.getElementById("status-scanner").style.color = "#22c55e"; // Fica Verde
+                
+                // 2. ESPERA MEIO SEGUNDO (Para o motorista ver a animação de Lock-on) e sobe o Bottom Sheet
+                setTimeout(() => {
+                    document.getElementById("texto-endereco-lido").innerText = textoFinal;
+                    document.getElementById("banner-confirmacao").style.transform = "translateY(0)";
+                }, 600); // 600ms de delay para a mágica visual acontecer
 
+                // Ações dos Botões
                 btnConfirmar.onclick = () => {
                     fecharTudo();
                     if (modo === 'input') {
@@ -409,7 +457,13 @@ async function abrirScannerInteligente(inputAlvo, modo = 'input') {
                 };
 
                 btnRecusar.onclick = () => {
+                    // Motorista recusou: Esconde a aba e RESETA A MIRA
                     document.getElementById("banner-confirmacao").style.transform = "translateY(100%)"; 
+                    
+                    document.getElementById("mira-scanner").classList.remove("lock-on");
+                    document.getElementById("status-scanner").innerText = "Mire no endereço do pacote...";
+                    document.getElementById("status-scanner").style.color = "white";
+
                     emPausa = false; 
                     setTimeout(processarQuadroAoVivo, 500); 
                 };
