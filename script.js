@@ -723,3 +723,24 @@ function gerarBotoesDeNavegacao(result, temposOriginais, ordemOtimizada) {
         divLista.appendChild(btn);
     });
 }
+
+// Função para inicializar o mapa (chamada pelo Google Maps)
+window.initMap = () => {
+    const mapaElemento = document.getElementById("map"); // Você precisa de um <div id="map"> no HTML
+    
+    if (mapaElemento) {
+        const mapa = new google.maps.Map(mapaElemento, {
+            center: { lat: -23.5505, lng: -46.6333 }, // São Paulo como exemplo
+            zoom: 14,
+            disableDefaultUI: false
+        });
+
+        // Serviços de Roteirização
+        const directionsService = new google.maps.DirectionsService();
+        const directionsRenderer = new google.maps.DirectionsRenderer();
+        
+        directionsRenderer.setMap(mapa);
+
+        console.log("Sistema de Roteirização Roturbo ativo.");
+    }
+};
